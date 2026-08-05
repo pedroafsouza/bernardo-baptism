@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { createMainScene } from "@/components/game/createMainScene";
 import type { Control } from "@/lib/gameConstants";
 import Icon from "@/components/Icon";
@@ -110,6 +110,16 @@ export default function PhaserGame({
         backgroundColor: "#bfe3ff",
         pixelArt: true,
         roundPixels: true,
+        // The intro banner, Phaser's audio stack (music is handled by
+        // lib/music) and gamepad polling are all dead weight here.
+        banner: false,
+        audio: { noAudio: true },
+        disableContextMenu: true,
+        input: { keyboard: true, mouse: true, touch: true, gamepad: false },
+        render: { powerPreference: "high-performance" },
+        // Clamp the simulation step: a backgrounded tab that resumes with a
+        // huge delta used to teleport Bernardo through the floor.
+        fps: { target: 60, min: 30, smoothStep: true },
         scale: {
           mode: Phaser.Scale.RESIZE,
           autoCenter: Phaser.Scale.CENTER_BOTH,
@@ -142,24 +152,77 @@ export default function PhaserGame({
     ctrl.current[k] = v;
   }, []);
 
-  const holdBtn = (k: keyof Control, label: React.ReactNode, extra = "") => (
-    <button
-      aria-label={k}
-      className={`select-none pixel-btn flex items-center justify-center border-4 border-black text-black active:brightness-90 ${extra}`}
-      onPointerDown={(e) => {
-        e.preventDefault();
-        set(k, true);
-      }}
-      onPointerUp={(e) => {
-        e.preventDefault();
-        set(k, false);
-      }}
-      onPointerLeave={() => set(k, false)}
-      onPointerCancel={() => set(k, false)}
-      onContextMenu={(e) => e.preventDefault()}
-    >
-      {label}
-    </button>
+  const holdBtn = useCallback(
+    (k: keyof Control, label: React.ReactNode, extra = "") => (
+      <button
+        aria-label={k}
+        className={`select-none pixel-btn flex items-center justify-center border-4 border-black text-black active:brightness-90 ${extra}`}
+        onPointerDown={(e) => {
+          e.preventDefault();
+          set(k, true);
+        }}
+        onPointerUp={(e) => {
+          e.preventDefault();
+          set(k, false);
+        }}
+        onPointerLeave={() => set(k, false)}
+        onPointerCancel={() => set(k, false)}
+        onContextMenu={(e) => e.preventDefault()}
+      >
+        {label}
+      </button>
+    ),
+    [set]
+  );
+
+  // Every bone Bernardo grabs bumps `coins`, which re-renders this component.
+  // The d-pad and the music button don't depend on the score, so memoising them
+  // keeps those repaints to the two HUD counters instead of the whole overlay.
+  const touchControls = useMemo(
+    () => (
+      <>
+        <div
+          className={`absolute bottom-6 left-4 z-20 flex gap-2 ${
+            disabled ? "opacity-30 pointer-events-none" : ""
+          }`}
+          style={{ touchAction: "none" }}
+        >
+          {holdBtn("left", <Icon name="left" />, "w-16 h-16 bg-pastel-cream")}
+          {holdBtn("right", <Icon name="right" />, "w-16 h-16 bg-pastel-cream")}
+        </div>
+
+        <div
+          className={`absolute bottom-6 right-4 z-20 ${
+            disabled ? "opacity-30 pointer-events-none" : ""
+          }`}
+          style={{ touchAction: "none" }}
+        >
+          {holdBtn(
+            "jump",
+            <span className="flex flex-col items-center gap-0.5 text-[16px]">
+              <Icon name="up" />
+              HOP
+            </span>,
+            "w-20 h-20 bg-pastel-green rounded-full"
+          )}
+        </div>
+      </>
+    ),
+    [disabled, holdBtn]
+  );
+
+  const musicButton = useMemo(
+    () => (
+      <button
+        onClick={toggleMusic}
+        aria-label={muted ? t.musicOff : t.musicOn}
+        title={muted ? t.musicOff : t.musicOn}
+        className="absolute top-3 left-3 z-20 pixel-btn bg-white/90 border-4 border-black text-black w-10 h-10 flex items-center justify-center text-[17px]"
+      >
+        <Icon name={muted ? "muted" : "music"} />
+      </button>
+    ),
+    [muted, toggleMusic, t.musicOff, t.musicOn]
   );
 
   return (
@@ -184,15 +247,7 @@ export default function PhaserGame({
         </div>
       </div>
 
-      {/* Music toggle */}
-      <button
-        onClick={toggleMusic}
-        aria-label={muted ? t.musicOff : t.musicOn}
-        title={muted ? t.musicOff : t.musicOn}
-        className="absolute top-3 left-3 z-20 pixel-btn bg-white/90 border-4 border-black text-black w-10 h-10 flex items-center justify-center text-[17px]"
-      >
-        <Icon name={muted ? "muted" : "music"} />
-      </button>
+      {musicButton}
 
       {!ready && (
         <div className="absolute inset-0 z-30 flex items-center justify-center bg-pastel-blue">
@@ -202,33 +257,7 @@ export default function PhaserGame({
         </div>
       )}
 
-      {/* Left/Right pad */}
-      <div
-        className={`absolute bottom-6 left-4 z-20 flex gap-2 ${
-          disabled ? "opacity-30 pointer-events-none" : ""
-        }`}
-        style={{ touchAction: "none" }}
-      >
-        {holdBtn("left", <Icon name="left" />, "w-16 h-16 bg-pastel-cream")}
-        {holdBtn("right", <Icon name="right" />, "w-16 h-16 bg-pastel-cream")}
-      </div>
-
-      {/* Jump */}
-      <div
-        className={`absolute bottom-6 right-4 z-20 ${
-          disabled ? "opacity-30 pointer-events-none" : ""
-        }`}
-        style={{ touchAction: "none" }}
-      >
-        {holdBtn(
-          "jump",
-          <span className="flex flex-col items-center gap-0.5 text-[16px]">
-            <Icon name="up" />
-            HOP
-          </span>,
-          "w-20 h-20 bg-pastel-green rounded-full"
-        )}
-      </div>
+      {touchControls}
     </div>
   );
 }

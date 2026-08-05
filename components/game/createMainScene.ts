@@ -155,17 +155,28 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
           return t;
         }
 
-        buildGround(from: number, to: number) {
+        // Static terrain used to be one image per tile — ~280 sprites, each its
+        // own draw call. The collision bodies still need to be per-tile, but the
+        // pixels don't: one repeating TileSprite per run of tiles paints the
+        // same thing in a single call, so the bodies are created invisible.
+        addSolidRun(from: number, to: number, row: number, key: string) {
+          const w = (to - from + 1) * T;
+          this.add
+            .tileSprite(from * T, row * T, w, T, key)
+            .setOrigin(0, 0)
+            .setDepth(0);
           for (let x = from; x <= to; x++) {
-            this.addSolidTex(x, 8, "groundTop");
-            this.addSolidTex(x, 9, "groundBody");
+            this.addSolidTex(x, row, key).setVisible(false);
           }
         }
 
+        buildGround(from: number, to: number) {
+          this.addSolidRun(from, to, 8, "groundTop");
+          this.addSolidRun(from, to, 9, "groundBody");
+        }
+
         buildPlatform(from: number, to: number, row: number) {
-          for (let x = from; x <= to; x++) {
-            this.addSolidTex(x, row, "groundTop");
-          }
+          this.addSolidRun(from, to, row, "groundTop");
         }
 
         addCross(tx: number, ty: number) {
@@ -245,16 +256,22 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
         // A shallow Skagen sand hole: a one-tile-deep pit with a sandy floor the
         // player can drop into and hop back out of.
         addSandPit(a: number, b: number) {
+          const w = (b - a + 1) * T;
+          // sandy back wall (visual, recessed)
+          this.add
+            .tileSprite(a * T, 8 * T, w, T, "sand")
+            .setOrigin(0, 0)
+            .setDepth(-3)
+            .setTint(0xcdb684);
+          // solid sand floor at the bottom row
+          this.add
+            .tileSprite(a * T, 9 * T, w, T, "sand")
+            .setOrigin(0, 0)
+            .setDepth(0);
           for (let x = a; x <= b; x++) {
-            // sandy back wall (visual, recessed)
-            this.add
-              .image(x * T + T / 2, 8 * T + T / 2, "sand")
-              .setDisplaySize(T, T)
-              .setDepth(-3)
-              .setTint(0xcdb684);
-            // solid sand floor at the bottom row
             const floor = this.solids.create(x * T + T / 2, 9 * T + T / 2, "sand");
             floor.setDisplaySize(T, T);
+            floor.setVisible(false);
             floor.refreshBody();
           }
           // beach-grass tufts on the rim
