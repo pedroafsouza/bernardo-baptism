@@ -101,6 +101,57 @@ gh secret set ADMIN_SECRET
 
 ---
 
+## Deployment
+
+Pushing to `main` runs `.github/workflows/release.yml`: it typechecks and builds
+first, and only deploys if that passes. You can also trigger it manually
+("Run workflow") or by publishing a GitHub Release.
+
+The server is a Hetzner CAX11 running the app under systemd behind Caddy, which
+terminates TLS with automatic Let's Encrypt certificates.
+
+### The production database is never overwritten
+
+`scripts/deploy.sh` is built so a deploy cannot destroy real RSVPs:
+
+1. The live database is **backed up first** (`sqlite3 .backup`, WAL-safe) into
+   `backups/`, keeping the last 20.
+2. `prisma db push` runs **without `--accept-data-loss`** — a schema change that
+   would drop a column **fails the deploy** instead of silently deleting answers.
+3. Seeding is opt-in via `SEED_MODE`:
+
+| `SEED_MODE`  | Behaviour                                                                 |
+| ------------ | ------------------------------------------------------------------------- |
+| `if-missing` | **Default.** Seeds only when there is no production database yet. An existing database is left completely untouched. |
+| `never`      | Never seeds, even on a fresh database.                                     |
+| `force`      | Re-runs the seed. It **upserts**, so names and new guests are refreshed while every RSVP, score and sent-flag survives. |
+
+On a first deploy the database is created and planted with the guest list in a
+clean state: everyone `PENDING`, no scores, nothing marked as sent.
+
+Finally the service restarts and the deploy only succeeds if the app answers
+`200`.
+
+### Required repository secrets
+
+| Secret               | Purpose                                    |
+| -------------------- | ------------------------------------------ |
+| `DEPLOY_HOST`        | Server IP                                  |
+| `DEPLOY_USER`        | Deploy user (`deploy`)                     |
+| `DEPLOY_SSH_KEY`     | Private key of a dedicated CI-only keypair |
+| `DEPLOY_KNOWN_HOSTS` | Pinned host key, so a deploy cannot be redirected elsewhere |
+
+## Resetting the database
+
+The admin panel has a **Farezone** (danger zone) at the bottom with three
+separate blast radii. Each one requires typing `RESET` to confirm.
+
+| Action                   | Clears                              | Keeps                                     |
+| ------------------------ | ----------------------------------- | ----------------------------------------- |
+| **Nulstil topliste**     | bones, blessings, scores, play time | RSVPs, guest list, sent flags             |
+| **Nulstil svar**         | RSVPs + all game progress           | guest list, invitation-sent flags         |
+| **Nulstil hele databasen** | everything                        | nothing — rebuilds the list from `prisma/guests.ts` |
+
 ## Scripts
 
 | Command          | What it does                              |
