@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { GROUPS, STATUSES } from "@/lib/config";
 import Icon, { type IconName } from "@/components/Icon";
 import InviteMessageModal from "@/components/admin/InviteMessageModal";
@@ -84,7 +84,7 @@ function LangToggle({
   );
 }
 
-export default function AdminPage() {
+function AdminPageInner() {
   const { lang, setLang, t } = useAdminLang();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -987,5 +987,21 @@ export default function AdminPage() {
         />
       )}
     </main>
+  );
+}
+
+// `useAdminLang` reads the `?lang=` query parameter, which requires a Suspense
+// boundary above it in the App Router.
+export default function AdminPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen flex items-center justify-center">
+          <p className="text-black text-xs animate-pulse">…</p>
+        </main>
+      }
+    >
+      <AdminPageInner />
+    </Suspense>
   );
 }

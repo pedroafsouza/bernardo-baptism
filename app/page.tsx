@@ -28,7 +28,7 @@ type Guest = {
 function InvitationInner() {
   const params = useSearchParams();
   const code = params.get("code");
-  const { lang, setLang, t } = useLang(params.get("lang"));
+  const { lang, setLang, t } = useLang();
   const [guest, setGuest] = useState<Guest | null>(null);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);

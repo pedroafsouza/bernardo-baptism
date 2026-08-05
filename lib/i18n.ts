@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
+import { useLangParam } from "@/lib/langParam";
 
 export type Lang = "da" | "en" | "pt";
 export const LANGS: Lang[] = ["da", "en", "pt"];
 export const DEFAULT_LANG: Lang = "da";
-const STORAGE_KEY = "lang";
 
 export const LANG_LABEL: Record<Lang, string> = {
   da: "Dansk",
@@ -298,41 +298,22 @@ export function isLang(value: unknown): value is Lang {
   return typeof value === "string" && (LANGS as string[]).includes(value);
 }
 
-export function readStoredLang(): Lang {
-  if (typeof window === "undefined") return DEFAULT_LANG;
-  const saved = window.localStorage.getItem(STORAGE_KEY);
-  return isLang(saved) ? saved : DEFAULT_LANG;
-}
-
 /**
- * Language is Danish by default. An explicit `?lang=` on the invitation link
- * wins (that is how a guest is invited in their own language) and is stored, so
- * it survives reloads and the in-game language picker keeps working.
+ * Language lives only in the `?lang=` query parameter — there is no stored
+ * preference — so an invitation link always opens in the language it carries
+ * and switching language rewrites the URL. Unknown or missing values fall back
+ * to Danish.
  */
-export function useLang(preferred?: string | null) {
-  const [lang, setLangState] = useState<Lang>(DEFAULT_LANG);
+export function useLang() {
+  const [param, setParam] = useLangParam();
+  const lang: Lang = isLang(param) ? param : DEFAULT_LANG;
 
-  useEffect(() => {
-    if (isLang(preferred)) {
-      setLangState(preferred);
-      try {
-        window.localStorage.setItem(STORAGE_KEY, preferred);
-      } catch {
-        /* private mode — fall back to in-memory only */
-      }
-      return;
-    }
-    setLangState(readStoredLang());
-  }, [preferred]);
-
-  const setLang = useCallback((next: Lang) => {
-    setLangState(next);
-    try {
-      window.localStorage.setItem(STORAGE_KEY, next);
-    } catch {
-      /* private mode — fall back to in-memory only */
-    }
-  }, []);
+  const setLang = useCallback(
+    (next: Lang) => {
+      setParam(next);
+    },
+    [setParam]
+  );
 
   return { lang, setLang, t: DICTS[lang] };
 }

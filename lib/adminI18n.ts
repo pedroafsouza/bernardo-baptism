@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
+import { useLangParam } from "@/lib/langParam";
 
 /**
  * The admin portal is used by both sides of the family, so it speaks Danish and
@@ -16,7 +17,6 @@ export const ADMIN_LANG_LABEL: Record<AdminLang, string> = {
   en: "English",
 };
 
-const STORAGE_KEY = "adminLang";
 const DEFAULT_LANG: AdminLang = "da";
 
 export type AdminDict = {
@@ -644,27 +644,24 @@ const en: AdminDict = {
 
 export const ADMIN_DICTS: Record<AdminLang, AdminDict> = { da, en };
 
-export function readStoredAdminLang(): AdminLang {
-  if (typeof window === "undefined") return DEFAULT_LANG;
-  const saved = window.localStorage.getItem(STORAGE_KEY);
-  return saved === "en" || saved === "da" ? saved : DEFAULT_LANG;
+export function isAdminLang(value: unknown): value is AdminLang {
+  return value === "da" || value === "en";
 }
 
+/**
+ * Like the guest side, the portal language is read from — and written to — the
+ * `?lang=` query parameter only, so it is never out of sync with the URL.
+ */
 export function useAdminLang() {
-  const [lang, setLangState] = useState<AdminLang>(DEFAULT_LANG);
+  const [param, setParam] = useLangParam();
+  const lang: AdminLang = isAdminLang(param) ? param : DEFAULT_LANG;
 
-  useEffect(() => {
-    setLangState(readStoredAdminLang());
-  }, []);
-
-  const setLang = useCallback((next: AdminLang) => {
-    setLangState(next);
-    try {
-      window.localStorage.setItem(STORAGE_KEY, next);
-    } catch {
-      /* private mode — in-memory only */
-    }
-  }, []);
+  const setLang = useCallback(
+    (next: AdminLang) => {
+      setParam(next);
+    },
+    [setParam]
+  );
 
   return { lang, setLang, t: ADMIN_DICTS[lang] };
 }
