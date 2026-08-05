@@ -63,6 +63,7 @@ type Dict = {
   willMiss: string;
   thanksBody: (n: number) => string;
   declinedBody: string;
+  changeReply: string;
   close: string;
   genericError: string;
 
@@ -131,7 +132,8 @@ const da: Dict = {
   thanks: "Tak!",
   willMiss: "Vi vil savne dig",
   thanksBody: (n) => `Vi glæder os til at fejre det sammen med dig og dit selskab på ${n}.`,
-  declinedBody: "Tak, fordi du gav besked. Du vil være i vores tanker.",
+  declinedBody: "Tak, fordi du gav besked. Vi håber at se dig ved en anden lejlighed.",
+  changeReply: "Ret dit svar",
   close: "Luk",
   genericError: "Noget gik galt",
 
@@ -200,7 +202,8 @@ const en: Dict = {
   thanks: "Thank you!",
   willMiss: "We'll miss you",
   thanksBody: (n) => `We can't wait to celebrate with you and your party of ${n}.`,
-  declinedBody: "Thank you for letting us know. You'll be in our thoughts.",
+  declinedBody: "Thank you for letting us know. We hope to see you another time.",
+  changeReply: "Change your reply",
   close: "Close",
   genericError: "Something went wrong",
 

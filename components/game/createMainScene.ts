@@ -89,6 +89,9 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
         wasOnFloor = false;
         stepTimer = 0;
         fellToHell = false;
+        // Per-tile-column list of solid surface tops, used to plant Oscar on the
+        // terrain under *his* feet instead of copying Bernardo's height.
+        surfaceTops: number[][] = [];
 
         constructor() {
           super("main");
@@ -511,6 +514,31 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
 
           // church at the finish line
           this.buildChurch(lvl.churchTile);
+
+          this.buildSurfaceIndex();
+        }
+
+        /**
+         * Index every static solid by tile column so a downward "raycast" is a
+         * cheap array lookup. Oscar uses it to find the floor beneath himself.
+         */
+        buildSurfaceIndex() {
+          this.surfaceTops = [];
+          this.solids.getChildren().forEach((s: any) => {
+            const body = s.body;
+            if (!body) return;
+            const col = Math.floor(body.center.x / T);
+            (this.surfaceTops[col] ||= []).push(body.top);
+          });
+          this.surfaceTops.forEach((tops) => tops.sort((a, b) => a - b));
+        }
+
+        /** Topmost solid surface at world x that is at or below `feetY`. */
+        surfaceUnder(x: number, feetY: number) {
+          const tops = this.surfaceTops[Math.floor(x / T)];
+          if (!tops) return 8 * T;
+          for (const top of tops) if (top >= feetY - 6) return top;
+          return tops[tops.length - 1] ?? 8 * T;
         }
 
         // A springboard: landing on it launches Bernardo much higher than a jump.
@@ -1222,15 +1250,17 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
           }
 
           // Oscar trots along the ground just behind Bernardo, and hops in sync
-          // whenever Bernardo jumps (assisted co-op buddy). He stays planted on
-          // the floor otherwise instead of floating up during Bernardo's jumps.
+          // whenever Bernardo jumps (assisted co-op buddy). His height comes from
+          // the terrain under his own paws — copying Bernardo's height left him
+          // standing in mid-air whenever Bernardo was up on a platform.
           if (this.oscar) {
             const facingRight = !this.player.flipX;
             const moving = Math.abs(body.velocity.x) > 5;
             const gap = 30 + this.oscarScale * 14;
             const targetX = this.player.x + (facingRight ? -gap : gap);
-            if (onGround) this.oscarGroundY = body.bottom;
             this.oscar.x = Phaser.Math.Linear(this.oscar.x, targetX, 0.16);
+            const reference = onGround ? body.bottom : this.oscarGroundY;
+            this.oscarGroundY = this.surfaceUnder(this.oscar.x, reference);
             this.oscarBaseY = Phaser.Math.Linear(this.oscarBaseY, this.oscarGroundY, 0.3);
             // up-only stride bounce keeps his paws on the ground between strides
             const stride = this.oscarHopping || !moving

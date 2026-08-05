@@ -28,6 +28,7 @@ type Props = {
   run?: RunResult | null;
   leaderboardKey?: number;
   onClose: () => void;
+  onSaved?: (guest: Guest) => void;
 };
 
 export default function RsvpModal({
@@ -36,13 +37,18 @@ export default function RsvpModal({
   run,
   leaderboardKey = 0,
   onClose,
+  onSaved,
 }: Props) {
   const t = DICTS[lang];
   const [count, setCount] = useState(
     guest?.guestCount && guest.guestCount > 0 ? guest.guestCount : 1
   );
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<null | "ATTENDING" | "DECLINED">(null);
+  // An answer already stored for this guest is shown straight away, so
+  // re-opening the RSVP never looks like the reply was lost.
+  const [result, setResult] = useState<null | "ATTENDING" | "DECLINED">(
+    guest?.status === "ATTENDING" || guest?.status === "DECLINED" ? guest.status : null
+  );
   const [error, setError] = useState<string | null>(null);
 
   const name = guest?.name ?? "Friend";
@@ -68,6 +74,11 @@ export default function RsvpModal({
         throw new Error(d.error || t.genericError);
       }
       setResult(status);
+      onSaved?.({
+        ...guest,
+        status,
+        guestCount: status === "ATTENDING" ? count : 0,
+      });
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -257,6 +268,12 @@ export default function RsvpModal({
             <p className="text-[9px] sm:text-[10px] leading-relaxed">
               {result === "ATTENDING" ? t.thanksBody(count) : t.declinedBody}
             </p>
+            <button
+              onClick={() => setResult(null)}
+              className="pixel-btn mt-5 mr-2 bg-pastel-green border-4 border-black py-2 px-4 text-[10px] inline-flex items-center gap-2"
+            >
+              <Icon name="check" /> {t.changeReply}
+            </button>
             <button
               onClick={onClose}
               className="pixel-btn mt-5 bg-pastel-blue border-4 border-black py-2 px-4 text-[10px] inline-flex items-center gap-2"

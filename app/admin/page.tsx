@@ -5,6 +5,7 @@ import { GROUPS, STATUSES } from "@/lib/config";
 import Icon, { type IconName } from "@/components/Icon";
 import InviteMessageModal from "@/components/admin/InviteMessageModal";
 import DangerZone from "@/components/admin/DangerZone";
+import { copyText } from "@/lib/clipboard";
 
 type Guest = {
   id: string;
@@ -172,9 +173,14 @@ export default function AdminPage() {
     }
   }
 
-  function copyUrl(code: string) {
+  async function copyUrl(code: string) {
     const url = `${window.location.origin}/?code=${code}`;
-    navigator.clipboard.writeText(url);
+    const ok = await copyText(url);
+    if (!ok) {
+      setError(`Kunne ikke kopiere automatisk. Link: ${url}`);
+      return;
+    }
+    setError(null);
     setCopiedCode(code);
     setTimeout(() => setCopiedCode(null), 1500);
   }
@@ -191,11 +197,12 @@ export default function AdminPage() {
     [guests, filterGroup, filterStatus, filterSent]
   );
 
-  // "What is missing" — everyone who still owes us an answer, whose invitation
-  // hasn't gone out yet, and who hasn't played the game.
+  // "What is missing" — everyone who still owes us an answer (whether or not the
+  // invitation has been ticked off as sent), whose invitation hasn't gone out
+  // yet, and who hasn't played the game.
   const missing = useMemo(() => {
     const notSent = guests.filter((g) => !g.inviteSent);
-    const noAnswer = guests.filter((g) => g.inviteSent && g.status === "PENDING");
+    const noAnswer = guests.filter((g) => g.status === "PENDING");
     const notPlayed = guests.filter((g) => !g.playedAt);
     return { notSent, noAnswer, notPlayed };
   }, [guests]);

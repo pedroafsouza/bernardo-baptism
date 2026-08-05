@@ -57,15 +57,17 @@ export const level01: Level = {
     [114, 115],
   ],
 
-  // "?" bonus blocks — bump from below for an extra bone
+  // "?" bonus blocks — bump from below for an extra bone. They sit on row 5 so
+  // there is a full tile of headroom underneath: at row 6 they hung right above
+  // the player's head, making it awkward to run and jump past them.
   blocks: [
-    { tx: 13, ty: 6, reward: "bone" },
-    { tx: 27, ty: 6, reward: "bone" },
-    { tx: 39, ty: 6, reward: "bone" },
-    { tx: 57, ty: 6, reward: "bone" },
-    { tx: 74, ty: 6, reward: "bone" },
-    { tx: 92, ty: 6, reward: "bone" },
-    { tx: 109, ty: 6, reward: "bone" },
+    { tx: 13, ty: 5, reward: "bone" },
+    { tx: 27, ty: 5, reward: "bone" },
+    { tx: 39, ty: 5, reward: "bone" },
+    { tx: 57, ty: 5, reward: "bone" },
+    { tx: 74, ty: 5, reward: "bone" },
+    { tx: 92, ty: 5, reward: "bone" },
+    { tx: 109, ty: 5, reward: "bone" },
   ],
 
   // 3 blessings spread across the whole journey so the full level must be
@@ -76,16 +78,19 @@ export const level01: Level = {
     [122, 5],
   ],
 
+  // Treats. None of these may share a tile with a platform, a drifting raft or a
+  // "?" block — a treat inside a solid tile can never be picked up. Treats that
+  // used to sit inside the blessing platforms now rest on top of them.
   bones: [
-    [4, 7], [5, 6], [6, 6], [10, 6], [10, 7],
-    [17, 6], [18, 6], [21, 7], [24, 6], [24, 7],
-    [28, 6], [33, 7], [35, 6], [39, 7], [42, 6],
+    [4, 7], [5, 6], [6, 6], [11, 5], [10, 7],
+    [17, 6], [18, 6], [21, 7], [24, 5], [24, 7],
+    [28, 6], [33, 7], [35, 6], [39, 7], [42, 5],
     [42, 7], [49, 7], [52, 5], [56, 7], [58, 7],
-    [67, 7], [69, 6], [71, 6], [73, 7], [75, 6],
-    [78, 7], [80, 6], [85, 7], [88, 6], [90, 7],
-    [92, 6], [95, 7], [98, 6], [103, 7], [106, 6],
+    [67, 7], [69, 6], [70, 5], [73, 7], [75, 6],
+    [78, 7], [79, 6], [85, 7], [88, 6], [90, 7],
+    [92, 6], [95, 7], [97, 6], [103, 7], [106, 5],
     [108, 7], [110, 6], [113, 7], [117, 7], [120, 6],
-    [122, 6], [125, 7],
+    [121, 5], [125, 7],
   ],
 
   decor: [

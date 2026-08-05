@@ -181,6 +181,7 @@ function InvitationInner() {
           lang={lang}
           run={run}
           leaderboardKey={leaderboardKey}
+          onSaved={(g) => setGuest(g)}
           onClose={() => setShowModal(false)}
         />
       )}

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Icon from "@/components/Icon";
+import { copyText } from "@/lib/clipboard";
 import {
   MESSAGE_CHANNELS,
   MESSAGE_LANGS,
@@ -28,6 +29,7 @@ export default function InviteMessageModal({
   const [lang, setLang] = useState<MessageLang>("da");
   const [channel, setChannel] = useState<MessageChannel>("whatsapp");
   const [copied, setCopied] = useState<string | null>(null);
+  const [copyError, setCopyError] = useState<string | null>(null);
 
   const link = useMemo(
     () =>
@@ -43,7 +45,12 @@ export default function InviteMessageModal({
   );
 
   async function copy(what: "body" | "subject" | "link", text: string) {
-    await navigator.clipboard.writeText(text);
+    const ok = await copyText(text);
+    if (!ok) {
+      setCopyError("Kunne ikke kopiere — markér teksten og kopiér manuelt.");
+      return;
+    }
+    setCopyError(null);
     setCopied(what);
     setTimeout(() => setCopied(null), 1500);
   }
@@ -165,6 +172,12 @@ export default function InviteMessageModal({
             <Icon name="mail" /> Åbn e-mail
           </a>
         </div>
+
+        {copyError && (
+          <p className="mt-2 text-red-600 text-[9px] flex items-center gap-2">
+            <Icon name="warning" /> {copyError}
+          </p>
+        )}
 
         <label className="mt-4 flex items-center gap-2 text-[9px] cursor-pointer bg-white border-4 border-black p-3">
           <input
