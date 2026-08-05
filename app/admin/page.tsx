@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { GROUPS, STATUSES } from "@/lib/config";
 import Icon, { type IconName } from "@/components/Icon";
 import InviteMessageModal from "@/components/admin/InviteMessageModal";
+import DangerZone from "@/components/admin/DangerZone";
 
 type Guest = {
   id: string;
@@ -750,6 +751,8 @@ export default function AdminPage() {
             </tbody>
           </table>
         </div>
+
+        <DangerZone onDone={() => void load()} />
       </div>
 
       {messageGuest && (

@@ -1,0 +1,80 @@
+name: Release
+
+# Push to main ships automatically. Use "Run workflow" for manual control over
+# seeding, or publish a GitHub Release to deploy a tagged version.
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      seed_mode:
+        description: "Guest-list seeding behaviour"
+        required: true
+        default: if-missing
+        type: choice
+        options:
+          - if-missing # seed only when there is no production database yet
+          - never # never touch the guest list
+          - force # re-run the seed (upsert — keeps answers, scores, sent flags)
+
+concurrency:
+  group: release-production
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Typecheck and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci --no-audit --no-fund
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Build
+        # A throwaway URL: the build only needs Prisma to resolve, never connects.
+        env:
+          DATABASE_URL: "file:./ci.db"
+        run: npm run build
+
+  deploy:
+    name: Deploy to production
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Load SSH deploy key
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          # Pin the host key so the deploy cannot be redirected to another box.
+          printf '%s\n' "${{ secrets.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Run deployment
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          REF: ${{ github.sha }}
+          SEED_MODE: ${{ inputs.seed_mode || 'if-missing' }}
+        run: |
+          ssh -o BatchMode=yes "$USER@$HOST" \
+            "SEED_MODE='$SEED_MODE' DEPLOY_REF='$REF' bash /srv/baptism/scripts/deploy.sh"
+
+      - name: Verify the public site
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          ssh -o BatchMode=yes "$USER@$HOST" \
+            'curl -fsS -o /dev/null -w "app: %{http_code}\n" http://127.0.0.1:3000/'
