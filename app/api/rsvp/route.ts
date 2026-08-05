@@ -4,6 +4,7 @@ import { audit } from "@/lib/audit";
 import { RATE_RULES, rateLimit } from "@/lib/rateLimit";
 import { clientIp, readJson, safeId, safeInt } from "@/lib/security";
 import { clampParty } from "@/lib/capacity";
+import { demoGuest, isDemoCode } from "@/lib/demo";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +49,20 @@ export async function POST(req: NextRequest) {
     const status = body.data.status;
     if (status !== "ATTENDING" && status !== "DECLINED") {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+    }
+
+    // The demo invitation goes through the whole flow but is never stored.
+    if (isDemoCode(guestCode)) {
+      const attending = status === "ATTENDING";
+      return NextResponse.json({
+        ok: true,
+        demo: true,
+        guest: demoGuest({
+          status,
+          guestCount: attending ? safeInt(body.data.guestCount, 1, 10, 1) : 0,
+          kids: attending ? safeInt(body.data.kids, 0, 10, 0) : 0,
+        }),
+      });
     }
 
     const existing = await prisma.guest.findUnique({ where: { guestCode } });
@@ -95,6 +110,9 @@ export async function GET(req: NextRequest) {
   const guestCode = safeId(req.nextUrl.searchParams.get("code"));
   if (!guestCode) {
     return NextResponse.json({ error: "code is required" }, { status: 400 });
+  }
+  if (isDemoCode(guestCode)) {
+    return NextResponse.json({ guest: demoGuest(), demo: true });
   }
   const guest = await prisma.guest.findUnique({ where: { guestCode } });
   if (!guest) {

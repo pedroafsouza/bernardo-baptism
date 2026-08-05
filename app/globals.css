@@ -86,3 +86,26 @@ select,
   overflow: hidden;
   touch-action: none;
 }
+
+/* Oscar's sitting idle: he mostly sits still, then wags / yaps for a beat.
+   Frames 27 and 28 of the sprite sheet sit side by side on the same row. */
+@keyframes oscar-sit-idle {
+  0%,
+  72% {
+    background-position-x: -192px;
+  }
+  73%,
+  100% {
+    background-position-x: -256px;
+  }
+}
+
+.oscar-sit-idle {
+  animation: oscar-sit-idle 2.6s steps(1, end) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .oscar-sit-idle {
+    animation: none;
+  }
+}

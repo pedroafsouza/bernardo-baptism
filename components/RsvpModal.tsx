@@ -28,6 +28,8 @@ export type RunResult = {
 
 type Props = {
   guest: Guest | null;
+  /** Demo invitation — the flow behaves normally but nothing is stored. */
+  demo?: boolean;
   lang: Lang;
   run?: RunResult | null;
   leaderboardKey?: number;
@@ -37,6 +39,7 @@ type Props = {
 
 export default function RsvpModal({
   guest,
+  demo = false,
   lang,
   run,
   leaderboardKey = 0,
@@ -79,6 +82,18 @@ export default function RsvpModal({
     if (!guest) return;
     setSubmitting(true);
     setError(null);
+    // A demo reply is acknowledged exactly like a real one, minus the write.
+    if (demo) {
+      await new Promise((r) => setTimeout(r, 350));
+      setResult(status);
+      onSaved?.({
+        ...guest,
+        status,
+        guestCount: status === "ATTENDING" ? count : 0,
+      });
+      setSubmitting(false);
+      return;
+    }
     try {
       const res = await fetch("/api/rsvp", {
         method: "POST",
@@ -166,6 +181,12 @@ export default function RsvpModal({
                 refreshKey={leaderboardKey}
               />
             </div>
+
+            {demo && (
+              <p className="bg-pastel-purple text-white border-4 border-black p-2 mb-4 text-[13px] leading-relaxed flex items-center gap-2">
+                <Icon name="warning" /> {t.demoNotice}
+              </p>
+            )}
 
             <div className="mb-4">
               <OscarSays>{t.oscarChurch}</OscarSays>
@@ -324,6 +345,11 @@ export default function RsvpModal({
             <p className="text-[14px] sm:text-[16px] leading-relaxed">
               {result === "ATTENDING" ? t.thanksBody(count, kids) : t.declinedBody}
             </p>
+            {demo && (
+              <p className="mt-3 text-[13px] leading-relaxed text-pastel-purple">
+                {t.demoNotice}
+              </p>
+            )}
             <button
               onClick={() => setResult(null)}
               className="pixel-btn mt-5 mr-2 bg-pastel-green border-4 border-black py-2 px-4 text-[16px] inline-flex items-center gap-2"

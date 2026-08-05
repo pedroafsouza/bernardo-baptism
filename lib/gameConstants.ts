@@ -37,9 +37,10 @@ export const BALL_REST_Y = 8 * T - BALL_TEX / 2; // body bottom sits on the gras
 // 92% of a tile wide, so it rests exactly on top of the grass line.
 export const PAD_H = 31 * 0.92;
 
-// Oscar grows as he is fed: a well-fed dog is a bigger dog.
-export const OSCAR_BASE_SCALE = 1.2;
-export const OSCAR_MAX_SCALE = 2.1;
+// Oscar grows as he is fed: he starts a little smaller than Bernardo (his art
+// is 40px tall against Bernardo's 45px) and ends up a comfortably plump dog.
+export const OSCAR_BASE_SCALE = 0.8;
+export const OSCAR_MAX_SCALE = 1.5;
 export const OSCAR_FULL_AT_BONES = 40;
 
 // Virtual D-pad / keyboard control state shared between React and the scene.

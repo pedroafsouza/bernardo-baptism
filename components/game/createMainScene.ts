@@ -96,7 +96,13 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
         oscarScale = OSCAR_BASE_SCALE;
         bonesCollected = 0;
         oscarJumpOffset = 0;
+        oscarPrevJumpOffset = 0;
         oscarHopping = false;
+        // idle "personality" state: which little trick he's performing, and when
+        // the next one is due while Bernardo stands still
+        oscarTrick: string | null = null;
+        oscarTrickUntil = 0;
+        oscarNextTrick = 0;
         wasOnFloor = false;
         stepTimer = 0;
         fellToHell = false;
@@ -118,8 +124,8 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
             frameHeight: 60,
           });
           this.load.spritesheet("oscar", "/assets/game/oscar.png", {
-            frameWidth: 48,
-            frameHeight: 46,
+            frameWidth: 64,
+            frameHeight: 52,
           });
           this.load.image("church_pixel", "/assets/game/church_pixel.png");
           this.load.image("hospital", "/assets/game/hospital.png");
@@ -746,23 +752,35 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
           this.oscarGroundY = this.spawnY + 28;
           this.oscarBaseY = this.spawnY + 28;
           if (!this.anims.exists("oscarWalk")) {
-            this.anims.create({
-              key: "oscarWalk",
-              frames: this.anims.generateFrameNumbers("oscar", { frames: [2, 3, 4, 5] }),
-              frameRate: 10,
-              repeat: -1,
-            });
-            this.anims.create({
-              key: "oscarIdle",
-              frames: this.anims.generateFrameNumbers("oscar", { frames: [0, 1] }),
-              frameRate: 1.6,
-              repeat: -1,
-            });
-            this.anims.create({
-              key: "oscarJump",
-              frames: this.anims.generateFrameNumbers("oscar", { frames: [6] }),
-              frameRate: 1,
-            });
+            // Sprite sheet is 8 columns of 64x52 cells:
+            //   0-1 stand · 2-7 walk · 8-9 facing camera · 10-13 run · 14 turn
+            //   15-16 jump · 17 fall · 18 land · 19-20 play bow · 21 bark
+            //   22-23 hurt · 24-25 tumble · 26 cheer · 27-28 sit
+            const anim = (
+              key: string,
+              frames: number[],
+              frameRate: number,
+              repeat = -1
+            ) =>
+              this.anims.create({
+                key,
+                frames: this.anims.generateFrameNumbers("oscar", { frames }),
+                frameRate,
+                repeat,
+              });
+            anim("oscarWalk", [2, 3, 4, 5, 6, 7], 10);
+            anim("oscarRun", [10, 11, 12, 13], 14);
+            anim("oscarIdle", [0, 1], 1.6);
+            anim("oscarJump", [15], 1, 0);
+            anim("oscarFall", [17], 1, 0);
+            anim("oscarLand", [18], 1, 0);
+            // idle tricks — each plays once and then hands control back to idle
+            anim("oscarSit", [18, 27, 28, 27, 27, 28, 27, 27], 3, 0);
+            anim("oscarLook", [14, 8, 9, 8, 14], 2, 0);
+            anim("oscarBow", [19, 20, 20, 19], 3, 0);
+            anim("oscarBark", [0, 21, 0, 21], 5, 0);
+            anim("oscarSniff", [18, 19, 18, 0], 3.5, 0);
+            anim("oscarCheer", [26, 16, 26, 16], 5, 0);
           }
           this.oscar.play("oscarIdle");
 
@@ -946,11 +964,61 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
           show(this.oscar, TXT.oscar, 1600, -22, 46);
         }
 
+        // While Bernardo stands still Oscar doesn't just freeze: after a beat he
+        // starts amusing himself — sitting, sniffing, stretching into a play bow,
+        // barking, glancing at the camera — then returns to his idle breathing.
+        cancelOscarTrick() {
+          this.oscarTrick = null;
+          this.oscarTrickUntil = 0;
+          this.oscarNextTrick = 0;
+        }
+
+        oscarIdleTricks() {
+          const now = this.time.now;
+          if (this.oscarTrick) {
+            if (now < this.oscarTrickUntil) return; // let the current trick finish
+            this.oscarTrick = null;
+            this.oscarNextTrick = now + Phaser.Math.Between(3600, 7000);
+          }
+          if (!this.oscarNextTrick) {
+            this.oscarNextTrick = now + Phaser.Math.Between(2600, 4800);
+          }
+          if (now < this.oscarNextTrick) {
+            this.oscar.play("oscarIdle", true);
+            return;
+          }
+          // Weighted so he mostly settles down and only rarely turns to face the
+          // camera — a dog that spins around every few seconds looks nervous.
+          const tricks: [string, number, number][] = [
+            ["oscarSit", 3200, 5],
+            ["oscarSniff", 1500, 4],
+            ["oscarBow", 1700, 3],
+            ["oscarBark", 900, 2],
+            ["oscarLook", 2400, 1],
+          ];
+          const total = tricks.reduce((sum, t) => sum + t[2], 0);
+          let roll = Math.random() * total;
+          let picked = tricks[0];
+          for (const trick of tricks) {
+            roll -= trick[2];
+            if (roll <= 0) {
+              picked = trick;
+              break;
+            }
+          }
+          const [key, ms] = picked;
+          this.oscarTrick = key;
+          this.oscarTrickUntil = now + ms;
+          this.oscar.play(key, true);
+        }
+
         // Oscar mirrors Bernardo's jump with a little delayed arc, so he reads as
         // an assisting co-op buddy rather than a passive follower.
         oscarHop() {
           if (this.oscarHopping) return;
           this.oscarHopping = true;
+          this.oscarPrevJumpOffset = 0;
+          this.cancelOscarTrick();
           // a small anticipation crouch, then the arc up and back down
           this.tweens.add({
             targets: this,
@@ -1279,9 +1347,19 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
               : Math.abs(Math.sin(this.time.now * 0.02)) * 3;
             this.oscar.y = this.oscarBaseY - stride - this.oscarJumpOffset;
             this.oscar.setFlipX(!facingRight);
-            if (this.oscarHopping) this.oscar.play("oscarJump", true);
-            else if (moving) this.oscar.play("oscarWalk", true);
-            else this.oscar.play("oscarIdle", true);
+            if (this.oscarHopping) {
+              // rising vs. falling read from the hop tween's own offset
+              const rising = this.oscarJumpOffset >= this.oscarPrevJumpOffset;
+              this.oscarPrevJumpOffset = this.oscarJumpOffset;
+              this.cancelOscarTrick();
+              this.oscar.play(rising ? "oscarJump" : "oscarFall", true);
+            } else if (moving) {
+              this.cancelOscarTrick();
+              const running = Math.abs(body.velocity.x) > 190;
+              this.oscar.play(running ? "oscarRun" : "oscarWalk", true);
+            } else {
+              this.oscarIdleTricks();
+            }
           }
 
           // footballs roll realistically — spin scales with each ball's speed
@@ -1347,6 +1425,12 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
             if (touching && !this.entered) {
               this.entered = true;
               this.goalFx(this.player.x, this.player.y - 20);
+              if (this.oscar) {
+                // Oscar celebrates arriving at the church with Bernardo
+                this.oscarTrick = "oscarCheer";
+                this.oscarTrickUntil = this.time.now + 1800;
+                this.oscar.play("oscarCheer", true);
+              }
               onEnterRef.current();
             }
             if (!touching) this.entered = false;

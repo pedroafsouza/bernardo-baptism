@@ -8,6 +8,7 @@ import IntroOverlay from "@/components/IntroOverlay";
 import Icon from "@/components/Icon";
 import { useLang } from "@/lib/i18n";
 import { computeScore } from "@/lib/config";
+import { DEMO_CODE, demoGuest, isDemoCode } from "@/lib/demo";
 
 const PhaserGame = dynamic(() => import("@/components/PhaserGame"), {
   ssr: false,
@@ -46,6 +47,13 @@ function InvitationInner() {
     let active = true;
     async function load() {
       if (!code) {
+        setLoading(false);
+        return;
+      }
+      // The demo invitation never touches the database — resolve it locally so
+      // it also works when the guest list is empty or unreachable.
+      if (isDemoCode(code)) {
+        setGuest(demoGuest());
         setLoading(false);
         return;
       }
@@ -113,6 +121,12 @@ function InvitationInner() {
             {t.noCodeBody} <br />
             <span className="text-pastel-purple">{t.noCodeExample}</span>
           </p>
+          <a
+            href={`/?code=${DEMO_CODE}`}
+            className="pixel-btn mt-5 inline-flex items-center gap-2 bg-pastel-green border-4 border-black py-2 px-4 text-[15px]"
+          >
+            <Icon name="play" /> {t.demoTry}
+          </a>
         </div>
       </main>
     );
@@ -144,6 +158,8 @@ function InvitationInner() {
     );
   }
 
+  const demo = isDemoCode(code);
+
   return (
     <main className="game-root relative">
       <PhaserGame
@@ -165,6 +181,12 @@ function InvitationInner() {
         </button>
       )}
 
+      {demo && !showIntro && !showModal && (
+        <span className="absolute top-3 left-3 z-30 bg-pastel-purple text-white border-4 border-black text-[12px] px-2 py-1">
+          {t.demoBadge}
+        </span>
+      )}
+
       {showIntro && (
         <IntroOverlay
           name={guest.name}
@@ -181,6 +203,7 @@ function InvitationInner() {
       {showModal && (
         <RsvpModal
           guest={guest}
+          demo={demo}
           lang={lang}
           run={run}
           leaderboardKey={leaderboardKey}

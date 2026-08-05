@@ -1,40 +1,63 @@
 "use client";
 
-/** Oscar — Bernardo's loyal little white Bichon, drawn as crisp pixel-art SVG. */
-export function OscarAvatar({ size = 56 }: { size?: number }) {
+/**
+ * Oscar — Bernardo's loyal little Bichon, rendered straight from the same
+ * pixel-art sprite sheet the game uses (`/assets/game/oscar.png`) so the UI and
+ * the game always show the exact same dog.
+ *
+ * Sheet layout: 8 columns of 64x52 cells. Frame index reference:
+ *   0-1 stand · 2-7 walk · 8-9 facing camera · 10-13 run · 14 turn
+ *   15-16 jump · 17 fall · 18 land · 19-20 play bow · 21 bark
+ *   22-23 hurt · 24-25 tumble · 26 cheer · 27-28 sit
+ */
+export const OSCAR_SHEET = "/assets/game/oscar.png";
+export const OSCAR_FRAME_W = 64;
+export const OSCAR_FRAME_H = 52;
+const OSCAR_COLS = 8;
+
+function framePos(frame: number) {
+  const col = frame % OSCAR_COLS;
+  const row = Math.floor(frame / OSCAR_COLS);
+  return `-${col * OSCAR_FRAME_W}px -${row * OSCAR_FRAME_H}px`;
+}
+
+export function OscarAvatar({
+  size = 56,
+  frame = 27,
+  animated = true,
+}: {
+  size?: number;
+  /** Sprite-sheet frame to show (defaults to Oscar sitting). */
+  frame?: number;
+  /** Sitting idle loop (tail wag / little bark) — only for the default frame. */
+  animated?: boolean;
+}) {
+  const scale = size / OSCAR_FRAME_W;
+  const idle = animated && frame === 27;
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 32 32"
-      shapeRendering="crispEdges"
-      style={{ imageRendering: "pixelated" }}
+    <div
+      role="img"
       aria-label="Oscar the dog"
+      style={{
+        width: size,
+        height: OSCAR_FRAME_H * scale,
+        overflow: "hidden",
+      }}
     >
-      {/* fluffy body */}
-      <circle cx="16" cy="21" r="8" fill="#ffffff" stroke="#d9d2c4" strokeWidth="1" />
-      {/* ears */}
-      <circle cx="7" cy="13" r="4.2" fill="#f4efe6" stroke="#d9d2c4" strokeWidth="1" />
-      <circle cx="25" cy="13" r="4.2" fill="#f4efe6" stroke="#d9d2c4" strokeWidth="1" />
-      {/* head */}
-      <circle cx="16" cy="12" r="8" fill="#ffffff" stroke="#d9d2c4" strokeWidth="1" />
-      {/* cheeks fluff */}
-      <circle cx="9" cy="15" r="3" fill="#ffffff" />
-      <circle cx="23" cy="15" r="3" fill="#ffffff" />
-      {/* eyes */}
-      <circle cx="12.5" cy="11" r="1.5" fill="#2a2320" />
-      <circle cx="19.5" cy="11" r="1.5" fill="#2a2320" />
-      <circle cx="13" cy="10.5" r="0.5" fill="#fff" />
-      <circle cx="20" cy="10.5" r="0.5" fill="#fff" />
-      {/* snout + nose */}
-      <ellipse cx="16" cy="15" rx="3.2" ry="2.4" fill="#faf6ef" />
-      <ellipse cx="16" cy="14" rx="1.6" ry="1.2" fill="#2a2320" />
-      <path d="M16 15 v1.6 M16 16.6 l-1.6 0.8 M16 16.6 l1.6 0.8" stroke="#2a2320" strokeWidth="0.7" fill="none" />
-      {/* red bow (matches Bernardo's cape) */}
-      <path d="M13 20 l-3 -1.6 v3.2 z" fill="#d23b3b" />
-      <path d="M19 20 l3 -1.6 v3.2 z" fill="#d23b3b" />
-      <circle cx="16" cy="20" r="1.3" fill="#a82a2a" />
-    </svg>
+      <div
+        className={idle ? "oscar-sit-idle" : undefined}
+        style={{
+          width: OSCAR_FRAME_W,
+          height: OSCAR_FRAME_H,
+          transform: `scale(${scale})`,
+          transformOrigin: "top left",
+          backgroundImage: `url(${OSCAR_SHEET})`,
+          backgroundPosition: framePos(frame),
+          backgroundRepeat: "no-repeat",
+          imageRendering: "pixelated",
+        }}
+      />
+    </div>
   );
 }
 
@@ -43,7 +66,7 @@ export function OscarSays({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex items-start gap-2 text-left">
       <div className="shrink-0">
-        <OscarAvatar size={44} />
+        <OscarAvatar size={52} />
       </div>
       <div className="relative bg-white border-2 border-black px-3 py-2 text-[13px] leading-relaxed text-black">
         <span className="absolute -left-[7px] top-3 w-0 h-0 border-y-[6px] border-y-transparent border-r-[7px] border-r-black" />

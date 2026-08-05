@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { computeScore } from "@/lib/config";
 import { RATE_RULES, rateLimit } from "@/lib/rateLimit";
 import { clientIp, readJson, safeId, safeInt } from "@/lib/security";
+import { isDemoCode } from "@/lib/demo";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,12 @@ export async function POST(req: NextRequest) {
     const safeBones = safeInt(body.data.bones, 0, MAX_BONES, 0);
     const safeBlessings = safeInt(body.data.blessings, 0, 3, 0);
     const score = computeScore(safeBones, safeBlessings, !!body.data.finished);
+
+    // Demo runs are scored for the player but never stored, so the demo link
+    // can't appear on the leaderboard.
+    if (isDemoCode(guestCode)) {
+      return NextResponse.json({ ok: true, demo: true, score, isBest: true, best: score });
+    }
 
     const existing = await prisma.guest.findUnique({ where: { guestCode } });
     if (!existing) {

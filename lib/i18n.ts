@@ -44,6 +44,9 @@ type Dict = {
   noCodeExample: string;
   notFoundTitle: string;
   notFoundBody: (code: string) => string;
+  demoBadge: string;
+  demoTry: string;
+  demoNotice: string;
 
   bonesTooltip: string;
   music: string;
@@ -115,9 +118,12 @@ const da: Dict = {
   loadingInvitation: "Indlæser invitation…",
   noCodeTitle: "Bernardos barnedåb",
   noCodeBody: "Ingen invitationskode fundet. Brug venligst dit personlige link, f.eks.",
-  noCodeExample: "/?code=GUEST_101",
+  noCodeExample: "/?code=DEMO",
   notFoundTitle: "Gæst ikke fundet",
   notFoundBody: (c) => `Vi kunne ikke finde en invitation til koden ${c}.`,
+  demoBadge: "DEMO",
+  demoTry: "Prøv demoen",
+  demoNotice: "Demo-tilstand: du kan prøve alt, men intet svar bliver gemt.",
 
   bonesTooltip: "Godbidder til Oscar",
   music: "Musik",
@@ -193,9 +199,12 @@ const en: Dict = {
   loadingInvitation: "Loading invitation…",
   noCodeTitle: "Bernardo's Baptism",
   noCodeBody: "No invitation code found. Please use your personal link, e.g.",
-  noCodeExample: "/?code=GUEST_101",
+  noCodeExample: "/?code=DEMO",
   notFoundTitle: "Guest not found",
   notFoundBody: (c) => `We couldn't find an invitation for the code ${c}.`,
+  demoBadge: "DEMO",
+  demoTry: "Try the demo",
+  demoNotice: "Demo mode: try everything you like — no answer is saved.",
 
   bonesTooltip: "Treats for Oscar",
   music: "Music",
@@ -271,9 +280,12 @@ const pt: Dict = {
   loadingInvitation: "Carregando o convite…",
   noCodeTitle: "Batizado do Bernardo",
   noCodeBody: "Nenhum código de convite encontrado. Use o seu link pessoal, por exemplo",
-  noCodeExample: "/?code=GUEST_101",
+  noCodeExample: "/?code=DEMO",
   notFoundTitle: "Convidado não encontrado",
   notFoundBody: (c) => `Não encontramos um convite para o código ${c}.`,
+  demoBadge: "DEMO",
+  demoTry: "Experimentar a demo",
+  demoNotice: "Modo demo: experimente à vontade — nenhuma resposta é guardada.",
 
   bonesTooltip: "Petiscos para o Oscar",
   music: "Música",
