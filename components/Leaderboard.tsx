@@ -40,7 +40,7 @@ export default function Leaderboard({ lang, highlightCode, refreshKey = 0 }: Pro
   }, [refreshKey]);
 
   return (
-    <div className="bg-white border-4 border-black p-3 text-[9px] leading-relaxed">
+    <div className="bg-white border-4 border-black p-3 text-[14px] leading-relaxed">
       <div className="flex items-center gap-2 mb-2 font-bold">
         <Icon name="trophy" className="text-yellow-500" />
         {t.leaderboard}

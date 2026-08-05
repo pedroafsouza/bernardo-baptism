@@ -8,7 +8,7 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        pixel: ['"Press Start 2P"', "monospace"],
+        pixel: ['"Pixelify Sans"', '"Trebuchet MS"', "system-ui", "sans-serif"],
       },
       colors: {
         pastel: {

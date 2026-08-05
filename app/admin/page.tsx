@@ -6,6 +6,13 @@ import Icon, { type IconName } from "@/components/Icon";
 import InviteMessageModal from "@/components/admin/InviteMessageModal";
 import DangerZone from "@/components/admin/DangerZone";
 import { copyText } from "@/lib/clipboard";
+import {
+  useAdminLang,
+  ADMIN_LANGS,
+  ADMIN_LANG_LABEL,
+  type AdminLang,
+} from "@/lib/adminI18n";
+import { MESSAGE_LANGS, type MessageLang } from "@/lib/invite";
 
 type Guest = {
   id: string;
@@ -37,7 +44,37 @@ const emptyForm = {
   inviteSent: false,
 };
 
+function LangToggle({
+  lang,
+  setLang,
+  label,
+}: {
+  lang: AdminLang;
+  setLang: (l: AdminLang) => void;
+  label: string;
+}) {
+  return (
+    <div className="flex items-center gap-1.5 text-[14px]" title={label}>
+      <Icon name="language" className="opacity-60" />
+      {ADMIN_LANGS.map((l) => (
+        <button
+          key={l}
+          type="button"
+          onClick={() => setLang(l)}
+          aria-pressed={lang === l}
+          className={`pixel-btn border-2 border-black px-2 py-1 ${
+            lang === l ? "bg-pastel-green" : "bg-white opacity-70"
+          }`}
+        >
+          {ADMIN_LANG_LABEL[l]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function AdminPage() {
+  const { lang, setLang, t } = useAdminLang();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [authed, setAuthed] = useState(false);
@@ -52,6 +89,9 @@ export default function AdminPage() {
   const [form, setForm] = useState({ ...emptyForm });
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [messageGuest, setMessageGuest] = useState<Guest | null>(null);
+  // Language the copied guest links open in — the guests are Danish, English
+  // and Brazilian, so the link carries the language it was written for.
+  const [linkLang, setLinkLang] = useState<MessageLang>("da");
 
   // The session lives in an httpOnly cookie, so every admin call just sends
   // credentials and a 401 means "not logged in".
@@ -69,7 +109,7 @@ export default function AdminPage() {
       setAuthed(true);
       return true;
     } catch (e: any) {
-      setError(e.message || "Kunne ikke indlæse");
+      setError(e.message || t.couldNotLoad);
       return false;
     } finally {
       setLoading(false);
@@ -92,7 +132,7 @@ export default function AdminPage() {
     });
     if (!res.ok) {
       const d = await res.json().catch(() => ({}));
-      setLoginError(d.error || "Login mislykkedes");
+      setLoginError(d.error || t.loginFailed);
       return;
     }
     setPassword("");
@@ -119,7 +159,7 @@ export default function AdminPage() {
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
-        throw new Error(d.error || "Kunne ikke gemme");
+        throw new Error(d.error || t.couldNotSave);
       }
       setForm({ ...emptyForm });
       await load();
@@ -129,7 +169,7 @@ export default function AdminPage() {
   }
 
   async function deleteGuest(id: string) {
-    if (!confirm("Slet denne gæst?")) return;
+    if (!confirm(t.deleteConfirm)) return;
     await fetch(`/api/admin/guests?id=${id}`, {
       method: "DELETE",
       credentials: "same-origin",
@@ -168,16 +208,18 @@ export default function AdminPage() {
       body: JSON.stringify({ id: g.id, inviteSent: sent }),
     });
     if (!res.ok) {
-      setError("Kunne ikke opdatere 'invitation sendt'");
+      setError(t.couldNotUpdateSent);
       await load();
     }
   }
 
   async function copyUrl(code: string) {
-    const url = `${window.location.origin}/?code=${code}`;
+    const url = `${window.location.origin}/?code=${encodeURIComponent(
+      code
+    )}&lang=${linkLang}`;
     const ok = await copyText(url);
     if (!ok) {
-      setError(`Kunne ikke kopiere automatisk. Link: ${url}`);
+      setError(t.copyFailed(url));
       return;
     }
     setError(null);
@@ -248,15 +290,15 @@ export default function AdminPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `barnedaab-gaester-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `${t.csvFilename}-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
 
   if (checking) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-pastel-blue text-black text-[10px]">
-        <Icon name="spinner" spin className="mr-2" /> Indlæser…
+      <main className="min-h-screen flex items-center justify-center bg-pastel-blue text-black text-[16px]">
+        <Icon name="spinner" spin className="mr-2" /> {t.loading}
       </main>
     );
   }
@@ -268,11 +310,15 @@ export default function AdminPage() {
           onSubmit={login}
           className="pixel-border bg-pastel-cream border-4 border-black p-6 w-full max-w-sm text-black"
         >
-          <h1 className="text-[12px] mb-5 text-center flex items-center justify-center gap-2">
-            <Icon name="lock" /> Admin-login
+          <h1 className="text-[19px] mb-5 text-center flex items-center justify-center gap-2">
+            <Icon name="lock" /> {t.adminLogin}
           </h1>
 
-          <label className="block text-[8px] mb-1 opacity-70">Brugernavn</label>
+          <div className="flex justify-center mb-4">
+            <LangToggle lang={lang} setLang={setLang} label={t.language} />
+          </div>
+
+          <label className="block text-[13px] mb-1 opacity-70">{t.username}</label>
           <div className="flex items-center border-4 border-black bg-white mb-3">
             <span className="px-3 text-black/50">
               <Icon name="user" />
@@ -281,12 +327,12 @@ export default function AdminPage() {
               autoComplete="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="brugernavn"
-              className="w-full p-3 text-[10px] bg-white outline-none"
+              placeholder={t.usernamePlaceholder}
+              className="w-full p-3 text-[16px] bg-white outline-none"
             />
           </div>
 
-          <label className="block text-[8px] mb-1 opacity-70">Adgangskode</label>
+          <label className="block text-[13px] mb-1 opacity-70">{t.password}</label>
           <div className="flex items-center border-4 border-black bg-white mb-4">
             <span className="px-3 text-black/50">
               <Icon name="key" />
@@ -297,18 +343,18 @@ export default function AdminPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••"
-              className="w-full p-3 text-[10px] bg-white outline-none"
+              className="w-full p-3 text-[16px] bg-white outline-none"
             />
           </div>
 
           {loginError && (
-            <p className="text-red-600 text-[9px] mb-3 flex items-center gap-2">
+            <p className="text-red-600 text-[14px] mb-3 flex items-center gap-2">
               <Icon name="warning" /> {loginError}
             </p>
           )}
 
-          <button className="pixel-btn w-full bg-pastel-green border-4 border-black py-3 text-[10px] flex items-center justify-center gap-2">
-            <Icon name="lock" /> Log ind
+          <button className="pixel-btn w-full bg-pastel-green border-4 border-black py-3 text-[16px] flex items-center justify-center gap-2">
+            <Icon name="lock" /> {t.login}
           </button>
         </form>
       </main>
@@ -316,12 +362,12 @@ export default function AdminPage() {
   }
 
   const metricCards: { label: string; value: number; color: string; icon: IconName }[] = [
-    { label: "Inviterede husstande", value: metrics.invited, color: "bg-pastel-blue", icon: "guests" },
-    { label: "Invitationer sendt", value: metrics.sent, color: "bg-pastel-cream", icon: "sent" },
-    { label: "Bekræftet", value: metrics.confirmed, color: "bg-pastel-green", icon: "attending" },
-    { label: "Afbud", value: metrics.declined, color: "bg-pastel-pink", icon: "declined" },
-    { label: "Afventer svar", value: metrics.pending, color: "bg-pastel-purple", icon: "pending" },
-    { label: "Har spillet", value: metrics.played, color: "bg-pastel-yellow", icon: "trophy" },
+    { label: t.invitedHouseholds, value: metrics.invited, color: "bg-pastel-blue", icon: "guests" },
+    { label: t.invitationsSent, value: metrics.sent, color: "bg-pastel-cream", icon: "sent" },
+    { label: t.confirmed, value: metrics.confirmed, color: "bg-pastel-green", icon: "attending" },
+    { label: t.declined, value: metrics.declined, color: "bg-pastel-pink", icon: "declined" },
+    { label: t.awaitingReply, value: metrics.pending, color: "bg-pastel-purple", icon: "pending" },
+    { label: t.hasPlayed, value: metrics.played, color: "bg-pastel-yellow", icon: "trophy" },
   ];
 
   const ranked = [...guests].filter((g) => g.score > 0).sort((a, b) => b.score - a.score);
@@ -330,21 +376,22 @@ export default function AdminPage() {
     <main className="min-h-screen p-4 sm:p-6 bg-pastel-cream text-black">
       <div className="max-w-6xl mx-auto">
         <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
-          <h1 className="text-[13px] sm:text-base flex items-center gap-2">
-            <Icon name="church" /> Barnedåb-admin
+          <h1 className="text-[21px] sm:text-[24px] flex items-center gap-2">
+            <Icon name="church" /> {t.title}
           </h1>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap items-center">
+            <LangToggle lang={lang} setLang={setLang} label={t.language} />
             <button
               onClick={exportCsv}
-              className="pixel-btn bg-pastel-green border-4 border-black py-2 px-3 text-[9px] flex items-center gap-2"
+              className="pixel-btn bg-pastel-green border-4 border-black py-2 px-3 text-[14px] flex items-center gap-2"
             >
-              <Icon name="csv" /> Eksportér CSV
+              <Icon name="csv" /> {t.exportCsv}
             </button>
             <button
               onClick={logout}
-              className="pixel-btn bg-pastel-pink border-4 border-black py-2 px-3 text-[9px] flex items-center gap-2"
+              className="pixel-btn bg-pastel-pink border-4 border-black py-2 px-3 text-[14px] flex items-center gap-2"
             >
-              <Icon name="logout" /> Log ud
+              <Icon name="logout" /> {t.logout}
             </button>
           </div>
         </div>
@@ -352,34 +399,32 @@ export default function AdminPage() {
         {/* Headline answer: how many have accepted, and how many people that is */}
         <div className="pixel-border bg-pastel-green border-4 border-black p-4 mb-4 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <div className="text-[9px] opacity-70 mb-1 flex items-center gap-2">
-              <Icon name="attending" /> Accepteret
+            <div className="text-[14px] opacity-70 mb-1 flex items-center gap-2">
+              <Icon name="attending" /> {t.accepted}
             </div>
             <div className="text-xl sm:text-2xl">
-              {metrics.confirmed} <span className="text-[11px] opacity-70">af {metrics.invited}</span>
+              {metrics.confirmed} <span className="text-[17px] opacity-70">{t.ofTotal(metrics.invited)}</span>
             </div>
-            <div className="text-[8px] opacity-70 mt-1">
-              invitationer besvaret med ja
-            </div>
+            <div className="text-[13px] opacity-70 mt-1">{t.answeredYes}</div>
           </div>
           <div>
-            <div className="text-[9px] opacity-70 mb-1 flex items-center gap-2">
-              <Icon name="celebrate" /> Personer i alt
+            <div className="text-[14px] opacity-70 mb-1 flex items-center gap-2">
+              <Icon name="celebrate" /> {t.totalPeople}
             </div>
             <div className="text-xl sm:text-2xl">{metrics.attendeeCount}</div>
-            <div className="text-[8px] opacity-70 mt-1">
-              {metrics.adults} voksne · {metrics.kids} børn
+            <div className="text-[13px] opacity-70 mt-1">
+              {t.adultsKids(metrics.adults, metrics.kids)}
             </div>
           </div>
           <div>
-            <div className="text-[9px] opacity-70 mb-1 flex items-center gap-2">
-              <Icon name="sent" /> Invitationer sendt
+            <div className="text-[14px] opacity-70 mb-1 flex items-center gap-2">
+              <Icon name="sent" /> {t.invitationsSent}
             </div>
             <div className="text-xl sm:text-2xl">
-              {metrics.sent} <span className="text-[11px] opacity-70">af {metrics.invited}</span>
+              {metrics.sent} <span className="text-[17px] opacity-70">{t.ofTotal(metrics.invited)}</span>
             </div>
-            <div className="text-[8px] opacity-70 mt-1">
-              {metrics.invited - metrics.sent} mangler at blive sendt
+            <div className="text-[13px] opacity-70 mt-1">
+              {t.leftToSend(metrics.invited - metrics.sent)}
             </div>
           </div>
           <div className="w-full sm:w-auto sm:min-w-[180px]">
@@ -393,7 +438,7 @@ export default function AdminPage() {
                 }}
               />
             </div>
-            <div className="text-[8px] mt-1 opacity-70">Udsendelses-fremdrift</div>
+            <div className="text-[13px] mt-1 opacity-70">{t.sendProgress}</div>
           </div>
         </div>
 
@@ -404,11 +449,11 @@ export default function AdminPage() {
               key={m.label}
               className={`pixel-border ${m.color} border-4 border-black p-3 text-center`}
             >
-              <div className="text-black/50 text-[11px] mb-1">
+              <div className="text-black/50 text-[17px] mb-1">
                 <Icon name={m.icon} />
               </div>
               <div className="text-lg sm:text-xl mb-1">{m.value}</div>
-              <div className="text-[8px] leading-tight">{m.label}</div>
+              <div className="text-[13px] leading-tight">{m.label}</div>
             </div>
           ))}
         </div>
@@ -416,16 +461,16 @@ export default function AdminPage() {
         {/* What is missing */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="bg-white border-4 border-black p-4">
-            <h2 className="text-[10px] mb-3 flex items-center gap-2">
+            <h2 className="text-[16px] mb-3 flex items-center gap-2">
               <Icon name="sent" className="text-blue-600" />
-              Ikke sendt endnu ({missing.notSent.length})
+              {t.notSentYet(missing.notSent.length)}
             </h2>
             {missing.notSent.length === 0 ? (
-              <p className="text-[9px] flex items-center gap-2 text-green-700">
-                <Icon name="done" /> Alle invitationer er sendt!
+              <p className="text-[14px] flex items-center gap-2 text-green-700">
+                <Icon name="done" /> {t.allInvitationsSent}
               </p>
             ) : (
-              <ul className="text-[9px] space-y-1 max-h-56 overflow-y-auto">
+              <ul className="text-[14px] space-y-1 max-h-56 overflow-y-auto">
                 {missing.notSent.map((g) => (
                   <li key={g.id} className="flex items-center justify-between gap-2">
                     <span className="truncate">{g.name}</span>
@@ -433,7 +478,7 @@ export default function AdminPage() {
                       onClick={() => setMessageGuest(g)}
                       className="pixel-btn bg-pastel-green border-2 border-black px-2 py-1 shrink-0 flex items-center gap-1"
                     >
-                      <Icon name="mail" /> Besked
+                      <Icon name="mail" /> {t.message}
                     </button>
                   </li>
                 ))}
@@ -442,16 +487,16 @@ export default function AdminPage() {
           </div>
 
           <div className="bg-white border-4 border-black p-4">
-            <h2 className="text-[10px] mb-3 flex items-center gap-2">
+            <h2 className="text-[16px] mb-3 flex items-center gap-2">
               <Icon name="pending" className="text-amber-600" />
-              Mangler svar ({missing.noAnswer.length})
+              {t.missingReply(missing.noAnswer.length)}
             </h2>
             {missing.noAnswer.length === 0 ? (
-              <p className="text-[9px] flex items-center gap-2 text-green-700">
-                <Icon name="done" /> Alle inviterede har svaret!
+              <p className="text-[14px] flex items-center gap-2 text-green-700">
+                <Icon name="done" /> {t.everyoneAnswered}
               </p>
             ) : (
-              <ul className="text-[9px] space-y-1 max-h-56 overflow-y-auto">
+              <ul className="text-[14px] space-y-1 max-h-56 overflow-y-auto">
                 {missing.noAnswer.map((g) => (
                   <li key={g.id} className="flex items-center justify-between gap-2">
                     <span className="truncate">
@@ -462,7 +507,7 @@ export default function AdminPage() {
                       className="pixel-btn bg-pastel-blue border-2 border-black px-2 py-1 shrink-0 flex items-center gap-1"
                     >
                       <Icon name="copy" />
-                      {copiedCode === g.guestCode ? "Kopieret!" : "Link"}
+                      {copiedCode === g.guestCode ? t.copied : t.link}
                     </button>
                   </li>
                 ))}
@@ -471,14 +516,14 @@ export default function AdminPage() {
           </div>
 
           <div className="bg-white border-4 border-black p-4">
-            <h2 className="text-[10px] mb-3 flex items-center gap-2">
+            <h2 className="text-[16px] mb-3 flex items-center gap-2">
               <Icon name="trophy" className="text-yellow-500" />
-              Topliste
+              {t.leaderboard}
             </h2>
             {ranked.length === 0 ? (
-              <p className="text-[9px] opacity-60">Ingen har spillet endnu.</p>
+              <p className="text-[14px] opacity-60">{t.nobodyPlayed}</p>
             ) : (
-              <ol className="text-[9px] space-y-1 max-h-56 overflow-y-auto">
+              <ol className="text-[14px] space-y-1 max-h-56 overflow-y-auto">
                 {ranked.map((g, i) => (
                   <li key={g.id} className="flex items-center gap-2">
                     <span className="w-5 text-center opacity-60">{i + 1}</span>
@@ -491,8 +536,8 @@ export default function AdminPage() {
                 ))}
               </ol>
             )}
-            <p className="text-[8px] mt-3 opacity-60">
-              Har ikke spillet endnu: {missing.notPlayed.length}
+            <p className="text-[13px] mt-3 opacity-60">
+              {t.notPlayedYet(missing.notPlayed.length)}
             </p>
           </div>
         </div>
@@ -502,28 +547,28 @@ export default function AdminPage() {
           onSubmit={saveGuest}
           className="bg-white border-4 border-black p-4 mb-6 grid grid-cols-1 sm:grid-cols-6 gap-3 items-end"
         >
-          <div className="sm:col-span-6 text-[10px] flex items-center gap-2">
+          <div className="sm:col-span-6 text-[16px] flex items-center gap-2">
             <Icon name={form.id ? "edit" : "addGuest"} />
-            {form.id ? "Rediger gæst" : "Tilføj gæst"}
+            {form.id ? t.editGuest : t.addGuest}
           </div>
           <input
             required
             value={form.guestCode}
             onChange={(e) => setForm({ ...form, guestCode: e.target.value })}
             placeholder="GUEST_XYZ"
-            className="border-4 border-black p-2 text-[9px] sm:col-span-1"
+            className="border-4 border-black p-2 text-[14px] sm:col-span-1"
           />
           <input
             required
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
-            placeholder="Navn"
-            className="border-4 border-black p-2 text-[9px] sm:col-span-2"
+            placeholder={t.namePlaceholder}
+            className="border-4 border-black p-2 text-[14px] sm:col-span-2"
           />
           <select
             value={form.group}
             onChange={(e) => setForm({ ...form, group: e.target.value })}
-            className="border-4 border-black p-2 text-[9px]"
+            className="border-4 border-black p-2 text-[14px]"
           >
             {GROUPS.map((g) => (
               <option key={g}>{g}</option>
@@ -532,7 +577,7 @@ export default function AdminPage() {
           <select
             value={form.status}
             onChange={(e) => setForm({ ...form, status: e.target.value })}
-            className="border-4 border-black p-2 text-[9px]"
+            className="border-4 border-black p-2 text-[14px]"
           >
             {STATUSES.map((s) => (
               <option key={s}>{s}</option>
@@ -544,8 +589,8 @@ export default function AdminPage() {
             max={10}
             value={form.guestCount}
             onChange={(e) => setForm({ ...form, guestCount: Number(e.target.value) })}
-            title="Voksne"
-            className="border-4 border-black p-2 text-[9px]"
+            title={t.adults}
+            className="border-4 border-black p-2 text-[14px]"
           />
           <input
             type="number"
@@ -553,51 +598,51 @@ export default function AdminPage() {
             max={10}
             value={form.kids}
             onChange={(e) => setForm({ ...form, kids: Number(e.target.value) })}
-            title="Børn"
-            className="border-4 border-black p-2 text-[9px]"
+            title={t.kids}
+            className="border-4 border-black p-2 text-[14px]"
           />
-          <label className="sm:col-span-3 flex items-center gap-2 text-[9px]">
+          <label className="sm:col-span-3 flex items-center gap-2 text-[14px]">
             <input
               type="checkbox"
               checked={form.likely}
               onChange={(e) => setForm({ ...form, likely: e.target.checked })}
               className="w-4 h-4"
             />
-            Forventes at komme
+            {t.expectedToCome}
           </label>
-          <label className="sm:col-span-3 flex items-center gap-2 text-[9px]">
+          <label className="sm:col-span-3 flex items-center gap-2 text-[14px]">
             <input
               type="checkbox"
               checked={form.inviteSent}
               onChange={(e) => setForm({ ...form, inviteSent: e.target.checked })}
               className="w-4 h-4"
             />
-            Invitation sendt
+            {t.inviteSent}
           </label>
           <div className="sm:col-span-6 flex gap-2">
-            <button className="pixel-btn bg-pastel-green border-4 border-black py-2 px-4 text-[9px] flex items-center gap-2">
-              <Icon name="check" /> {form.id ? "Opdater" : "Tilføj"}
+            <button className="pixel-btn bg-pastel-green border-4 border-black py-2 px-4 text-[14px] flex items-center gap-2">
+              <Icon name="check" /> {form.id ? t.update : t.add}
             </button>
             {form.id && (
               <button
                 type="button"
                 onClick={() => setForm({ ...emptyForm })}
-                className="pixel-btn bg-pastel-yellow border-4 border-black py-2 px-4 text-[9px] flex items-center gap-2"
+                className="pixel-btn bg-pastel-yellow border-4 border-black py-2 px-4 text-[14px] flex items-center gap-2"
               >
-                <Icon name="close" /> Annuller
+                <Icon name="close" /> {t.cancel}
               </button>
             )}
           </div>
         </form>
 
         {/* Filters */}
-        <div className="flex gap-3 mb-3 flex-wrap text-[9px]">
+        <div className="flex gap-3 mb-3 flex-wrap text-[14px]">
           <select
             value={filterGroup}
             onChange={(e) => setFilterGroup(e.target.value)}
             className="border-4 border-black p-2 bg-white"
           >
-            <option value="ALL">Alle grupper</option>
+            <option value="ALL">{t.allGroups}</option>
             {GROUPS.map((g) => (
               <option key={g}>{g}</option>
             ))}
@@ -607,7 +652,7 @@ export default function AdminPage() {
             onChange={(e) => setFilterStatus(e.target.value)}
             className="border-4 border-black p-2 bg-white"
           >
-            <option value="ALL">Alle statusser</option>
+            <option value="ALL">{t.allStatuses}</option>
             {STATUSES.map((s) => (
               <option key={s}>{s}</option>
             ))}
@@ -617,31 +662,45 @@ export default function AdminPage() {
             onChange={(e) => setFilterSent(e.target.value)}
             className="border-4 border-black p-2 bg-white"
           >
-            <option value="ALL">Sendt: alle</option>
-            <option value="SENT">Invitation sendt</option>
-            <option value="NOT_SENT">Ikke sendt</option>
+            <option value="ALL">{t.sentAll}</option>
+            <option value="SENT">{t.sentYes}</option>
+            <option value="NOT_SENT">{t.sentNo}</option>
           </select>
+          <label className="flex items-center gap-2 border-4 border-black p-2 bg-white">
+            <span className="opacity-70">{t.linkLanguage}</span>
+            <select
+              value={linkLang}
+              onChange={(e) => setLinkLang(e.target.value as MessageLang)}
+              className="bg-white"
+            >
+              {MESSAGE_LANGS.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.label}
+                </option>
+              ))}
+            </select>
+          </label>
           {loading && (
             <span className="self-center flex items-center gap-2">
-              <Icon name="spinner" spin /> Indlæser…
+              <Icon name="spinner" spin /> {t.loading}
             </span>
           )}
         </div>
 
         {error && (
-          <p className="text-red-600 text-[9px] mb-3 flex items-center gap-2">
+          <p className="text-red-600 text-[14px] mb-3 flex items-center gap-2">
             <Icon name="warning" /> {error}
           </p>
         )}
 
         {/* Table */}
         <div className="overflow-x-auto border-4 border-black bg-white">
-          <table className="w-full text-[9px] min-w-[980px]">
+          <table className="w-full text-[14px] min-w-[980px]">
             <thead className="bg-pastel-blue">
               <tr>
                 {[
-                  "Sendt", "Kode", "Navn", "Gruppe", "Status",
-                  "Voksne", "Børn", "Score", "Handlinger",
+                  t.colSent, t.colCode, t.colName, t.colGroup, t.colStatus,
+                  t.adults, t.kids, t.colScore, t.colActions,
                 ].map((h) => (
                   <th key={h} className="p-2 text-left border-b-4 border-black">
                     {h}
@@ -659,8 +718,12 @@ export default function AdminPage() {
                       onChange={(e) => setInviteSent(g, e.target.checked)}
                       title={
                         g.inviteSentAt
-                          ? `Sendt ${new Date(g.inviteSentAt).toLocaleDateString("da-DK")}`
-                          : "Marker som sendt"
+                          ? t.sentOn(
+                              new Date(g.inviteSentAt).toLocaleDateString(
+                                lang === "en" ? "en-GB" : "da-DK"
+                              )
+                            )
+                          : t.markAsSent
                       }
                       className="w-4 h-4"
                     />
@@ -669,7 +732,7 @@ export default function AdminPage() {
                   <td className="p-2">
                     {g.name}
                     {!g.likely && (
-                      <span className="ml-1 opacity-50" title="Forventes ikke at komme">
+                      <span className="ml-1 opacity-50" title={t.notExpected}>
                         (?)
                       </span>
                     )}
@@ -723,26 +786,26 @@ export default function AdminPage() {
                         onClick={() => setMessageGuest(g)}
                         className="pixel-btn bg-pastel-green border-2 border-black px-2 py-1 flex items-center gap-1"
                       >
-                        <Icon name="mail" /> Se besked
+                        <Icon name="mail" /> {t.viewMessage}
                       </button>
                       <button
                         onClick={() => copyUrl(g.guestCode)}
                         className="pixel-btn bg-pastel-blue border-2 border-black px-2 py-1 flex items-center gap-1"
                       >
                         <Icon name="copy" />
-                        {copiedCode === g.guestCode ? "Kopieret!" : "Kopiér URL"}
+                        {copiedCode === g.guestCode ? t.copied : t.copyUrl}
                       </button>
                       <button
                         onClick={() => editGuest(g)}
                         className="pixel-btn bg-pastel-yellow border-2 border-black px-2 py-1 flex items-center gap-1"
                       >
-                        <Icon name="edit" /> Rediger
+                        <Icon name="edit" /> {t.edit}
                       </button>
                       <button
                         onClick={() => deleteGuest(g.id)}
                         className="pixel-btn bg-pastel-pink border-2 border-black px-2 py-1 flex items-center gap-1"
                       >
-                        <Icon name="trash" /> Slet
+                        <Icon name="trash" /> {t.remove}
                       </button>
                     </div>
                   </td>
@@ -751,7 +814,7 @@ export default function AdminPage() {
               {filtered.length === 0 && (
                 <tr>
                   <td colSpan={9} className="p-4 text-center opacity-60">
-                    Ingen gæster matcher filtrene.
+                    {t.noGuestsMatch}
                   </td>
                 </tr>
               )}

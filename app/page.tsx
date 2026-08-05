@@ -28,7 +28,7 @@ type Guest = {
 function InvitationInner() {
   const params = useSearchParams();
   const code = params.get("code");
-  const { lang, setLang, t } = useLang();
+  const { lang, setLang, t } = useLang(params.get("lang"));
   const [guest, setGuest] = useState<Guest | null>(null);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -105,8 +105,8 @@ function InvitationInner() {
           <div className="text-3xl mb-3 text-pastel-purple">
             <Icon name="cross" />
           </div>
-          <h1 className="text-[12px] leading-relaxed mb-3">{t.noCodeTitle}</h1>
-          <p className="text-[9px] leading-relaxed opacity-80">
+          <h1 className="text-[19px] leading-relaxed mb-3">{t.noCodeTitle}</h1>
+          <p className="text-[14px] leading-relaxed opacity-80">
             {t.noCodeBody} <br />
             <span className="text-pastel-purple">{t.noCodeExample}</span>
           </p>
@@ -132,8 +132,8 @@ function InvitationInner() {
           <div className="text-3xl mb-3 text-pastel-purple">
             <Icon name="question" />
           </div>
-          <h1 className="text-[12px] leading-relaxed mb-2">{t.notFoundTitle}</h1>
-          <p className="text-[9px] leading-relaxed opacity-80">
+          <h1 className="text-[19px] leading-relaxed mb-2">{t.notFoundTitle}</h1>
+          <p className="text-[14px] leading-relaxed opacity-80">
             {t.notFoundBody(code)}
           </p>
         </div>
@@ -156,7 +156,7 @@ function InvitationInner() {
       {!showIntro && !showModal && (
         <button
           onClick={() => openRsvp(false)}
-          className="absolute top-3 right-3 z-30 pixel-btn bg-white/90 border-4 border-black text-black text-[9px] px-3 py-2 flex items-center gap-2"
+          className="absolute top-3 right-3 z-30 pixel-btn bg-white/90 border-4 border-black text-black text-[14px] px-3 py-2 flex items-center gap-2"
         >
           {t.skip} <Icon name="skip" />
         </button>

@@ -20,6 +20,7 @@ import {
 import { generateTextures } from "@/components/game/textures";
 import { LEVELS, DEFAULT_LEVEL_ID } from "@/lib/levels/level01";
 import type { Level } from "@/lib/levels/types";
+import type { Lang } from "@/lib/i18n";
 
 export type SceneDeps = {
   control: Control;
@@ -28,11 +29,15 @@ export type SceneDeps = {
   setReady: (ready: boolean) => void;
   onEnterRef: { current: () => void };
   levelId?: string;
-  lang?: "da" | "en";
+  lang?: Lang;
 };
 
+// The pixel-game look without the eye strain: Pixelify Sans has real lowercase
+// shapes, so in-world text stays readable at these small canvas sizes.
+const GAME_FONT = '"Pixelify Sans", "Trebuchet MS", sans-serif';
+
 // In-world copy. Kept beside the scene because Phaser text can't use the React
-// i18n hook, but it follows the same Danish-default / English-opt-in rule.
+// i18n hook, but it follows the same Danish-default / opt-in rule.
 const SCENE_TEXT = {
   da: {
     collect: "Saml 3 velsignelser!",
@@ -46,12 +51,18 @@ const SCENE_TEXT = {
     bernardo: "Hi! I'm\nBernardo",
     oscar: "And I'm\nOscar!",
   },
+  pt: {
+    collect: "Colete 3 bênçãos!",
+    churchOpen: "A igreja está aberta — entre!",
+    bernardo: "Oi! Eu sou o\nBernardo",
+    oscar: "E eu sou o\nOscar!",
+  },
 } as const;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function createMainScene(Phaser: any, deps: SceneDeps) {
   const { control, setBlessings, setCoins, setReady, onEnterRef } = deps;
-  const TXT = SCENE_TEXT[deps.lang === "en" ? "en" : "da"];
+  const TXT = SCENE_TEXT[deps.lang && SCENE_TEXT[deps.lang] ? deps.lang : "da"];
   const level: Level = LEVELS[deps.levelId ?? DEFAULT_LEVEL_ID] ?? LEVELS[DEFAULT_LEVEL_ID];
 
   return class MainScene extends Phaser.Scene {
@@ -212,8 +223,8 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
           const board = this.add.rectangle(x, postTop, T * 1.7, T * 0.9, bg)
             .setStrokeStyle(3, 0x5a3a1b).setDepth(-2);
           this.add.text(x, postTop, label, {
-            fontFamily: '"Press Start 2P", monospace',
-            fontSize: "8px",
+            fontFamily: GAME_FONT,
+            fontSize: "12px",
             color: Phaser.Display.Color.ValueToColor(fg).rgba,
             align: "center",
             lineSpacing: 4,
@@ -842,8 +853,8 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
 
           this.hint = this.add
             .text(0, 0, "", {
-              fontFamily: '"Press Start 2P", monospace',
-              fontSize: "10px",
+              fontFamily: GAME_FONT,
+              fontSize: "15px",
               color: "#5d4037",
             })
             .setScrollFactor(0)
@@ -871,8 +882,8 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
           const pad = 6;
           const label = this.add
             .text(0, 0, text, {
-              fontFamily: '"Press Start 2P", monospace',
-              fontSize: "8px",
+              fontFamily: GAME_FONT,
+              fontSize: "13px",
               color: "#5d4037",
               align: "center",
               lineSpacing: 5,

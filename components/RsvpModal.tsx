@@ -52,8 +52,18 @@ export default function RsvpModal({
   const [error, setError] = useState<string | null>(null);
 
   const name = guest?.name ?? "Friend";
-  const ceremonyTime = lang === "en" ? EVENT.ceremonyTimeEn : EVENT.ceremonyTime;
-  const receptionTime = lang === "en" ? EVENT.receptionTimeEn : EVENT.receptionTime;
+  const ceremonyTime =
+    lang === "en"
+      ? EVENT.ceremonyTimeEn
+      : lang === "pt"
+        ? EVENT.ceremonyTimePt
+        : EVENT.ceremonyTime;
+  const receptionTime =
+    lang === "en"
+      ? EVENT.receptionTimeEn
+      : lang === "pt"
+        ? EVENT.receptionTimePt
+        : EVENT.receptionTime;
 
   async function submit(status: "ATTENDING" | "DECLINED") {
     if (!guest) return;
@@ -104,17 +114,17 @@ export default function RsvpModal({
                 <Icon name="baby" className="text-[#d98ba5]" />
                 <Icon name="cross" className="text-pastel-purple" />
               </div>
-              <h1 className="text-[13px] sm:text-base leading-relaxed">
+              <h1 className="text-[21px] sm:text-[24px] leading-relaxed">
                 {t.rsvpWelcome(name)}
               </h1>
-              <p className="text-[9px] sm:text-[10px] mt-2 text-pastel-purple">
+              <p className="text-[14px] sm:text-[16px] mt-2 text-pastel-purple">
                 {t.invitedTo}
               </p>
             </div>
 
             {/* Run summary — only after actually playing to the church */}
             {run && (
-              <div className="bg-white border-4 border-black p-3 mb-4 text-[9px] leading-relaxed">
+              <div className="bg-white border-4 border-black p-3 mb-4 text-[14px] leading-relaxed">
                 <div className="flex items-center gap-2 font-bold mb-2">
                   <Icon name="star" className="text-yellow-500" />
                   {t.yourScore}: <span className="text-pastel-purple">{run.score}</span>{" "}
@@ -149,7 +159,7 @@ export default function RsvpModal({
               <OscarSays>{t.oscarChurch}</OscarSays>
             </div>
 
-            <div className="bg-white border-4 border-black p-3 text-[9px] sm:text-[10px] leading-relaxed space-y-2 mb-4">
+            <div className="bg-white border-4 border-black p-3 text-[14px] sm:text-[16px] leading-relaxed space-y-2 mb-4">
               <p className="flex items-start gap-2">
                 <Icon name="baby" className="mt-0.5 text-pastel-purple" />
                 <span>
@@ -196,7 +206,7 @@ export default function RsvpModal({
             </div>
 
             <div className="mb-4">
-              <label className="block text-[9px] sm:text-[10px] mb-2">
+              <label className="block text-[14px] sm:text-[16px] mb-2">
                 <Icon name="guests" className="mr-1.5" />
                 {t.guestCount}
               </label>
@@ -205,7 +215,7 @@ export default function RsvpModal({
                   <button
                     key={n}
                     onClick={() => setCount(n)}
-                    className={`pixel-btn w-10 h-10 border-4 border-black text-[11px] ${
+                    className={`pixel-btn w-10 h-10 border-4 border-black text-[17px] ${
                       count === n ? "bg-pastel-green" : "bg-white"
                     }`}
                   >
@@ -216,7 +226,7 @@ export default function RsvpModal({
             </div>
 
             {error && (
-              <p className="text-red-600 text-[9px] mb-3 break-words flex items-center gap-2">
+              <p className="text-red-600 text-[14px] mb-3 break-words flex items-center gap-2">
                 <Icon name="warning" /> {error}
               </p>
             )}
@@ -225,7 +235,7 @@ export default function RsvpModal({
               <button
                 disabled={submitting}
                 onClick={() => submit("ATTENDING")}
-                className="pixel-btn bg-pastel-green border-4 border-black py-3 text-[10px] disabled:opacity-50 flex items-center justify-center gap-2"
+                className="pixel-btn bg-pastel-green border-4 border-black py-3 text-[16px] disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {submitting ? (
                   <>
@@ -240,7 +250,7 @@ export default function RsvpModal({
               <button
                 disabled={submitting}
                 onClick={() => submit("DECLINED")}
-                className="pixel-btn bg-pastel-pink border-4 border-black py-3 text-[10px] disabled:opacity-50 flex items-center justify-center gap-2"
+                className="pixel-btn bg-pastel-pink border-4 border-black py-3 text-[16px] disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {submitting ? (
                   <>
@@ -262,21 +272,21 @@ export default function RsvpModal({
                 className={result === "ATTENDING" ? "text-yellow-500" : "text-pastel-purple"}
               />
             </div>
-            <h2 className="text-[12px] sm:text-sm leading-relaxed mb-3">
+            <h2 className="text-[19px] sm:text-[21px] leading-relaxed mb-3">
               {result === "ATTENDING" ? t.thanks : t.willMiss}
             </h2>
-            <p className="text-[9px] sm:text-[10px] leading-relaxed">
+            <p className="text-[14px] sm:text-[16px] leading-relaxed">
               {result === "ATTENDING" ? t.thanksBody(count) : t.declinedBody}
             </p>
             <button
               onClick={() => setResult(null)}
-              className="pixel-btn mt-5 mr-2 bg-pastel-green border-4 border-black py-2 px-4 text-[10px] inline-flex items-center gap-2"
+              className="pixel-btn mt-5 mr-2 bg-pastel-green border-4 border-black py-2 px-4 text-[16px] inline-flex items-center gap-2"
             >
               <Icon name="check" /> {t.changeReply}
             </button>
             <button
               onClick={onClose}
-              className="pixel-btn mt-5 bg-pastel-blue border-4 border-black py-2 px-4 text-[10px] inline-flex items-center gap-2"
+              className="pixel-btn mt-5 bg-pastel-blue border-4 border-black py-2 px-4 text-[16px] inline-flex items-center gap-2"
             >
               <Icon name="close" /> {t.close}
             </button>

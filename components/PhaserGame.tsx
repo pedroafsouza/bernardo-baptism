@@ -84,6 +84,14 @@ export default function PhaserGame({
 
     (async () => {
       const Phaser = (await import("phaser")).default;
+      // Canvas text is rasterised once, so the webfont must be ready before the
+      // scene draws — otherwise the in-world text stays in the fallback face.
+      try {
+        await document.fonts.load('16px "Pixelify Sans"');
+        await document.fonts.ready;
+      } catch {
+        /* fonts are best-effort — never block the game */
+      }
       if (destroyed || !containerRef.current) return;
       const control = ctrl.current;
 
@@ -166,7 +174,7 @@ export default function PhaserGame({
 
       {/* HUD */}
       <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
-        <div className="bg-white/90 border-4 border-black px-3 py-2 text-[10px] sm:text-xs text-black flex gap-4">
+        <div className="bg-white/90 border-4 border-black px-3 py-2 text-[16px] sm:text-[18px] text-black flex gap-4">
           <span className="flex items-center gap-1.5">
             <Icon name="cross" className="text-pastel-purple" /> {blessings}/3
           </span>
@@ -181,7 +189,7 @@ export default function PhaserGame({
         onClick={toggleMusic}
         aria-label={muted ? t.musicOff : t.musicOn}
         title={muted ? t.musicOff : t.musicOn}
-        className="absolute top-3 left-3 z-20 pixel-btn bg-white/90 border-4 border-black text-black w-10 h-10 flex items-center justify-center text-[11px]"
+        className="absolute top-3 left-3 z-20 pixel-btn bg-white/90 border-4 border-black text-black w-10 h-10 flex items-center justify-center text-[17px]"
       >
         <Icon name={muted ? "muted" : "music"} />
       </button>
@@ -214,7 +222,7 @@ export default function PhaserGame({
       >
         {holdBtn(
           "jump",
-          <span className="flex flex-col items-center gap-0.5 text-[10px]">
+          <span className="flex flex-col items-center gap-0.5 text-[16px]">
             <Icon name="up" />
             HOP
           </span>,

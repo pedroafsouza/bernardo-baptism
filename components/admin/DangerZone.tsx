@@ -2,43 +2,45 @@
 
 import { useState } from "react";
 import Icon, { type IconName } from "@/components/Icon";
+import { useAdminLang, type AdminDict } from "@/lib/adminI18n";
 
 type Mode = "scores" | "answers" | "full";
 
-const OPTIONS: {
+function buildOptions(t: AdminDict): {
   mode: Mode;
   title: string;
   description: string;
   icon: IconName;
   color: string;
-}[] = [
-  {
-    mode: "scores",
-    title: "Nulstil topliste",
-    description:
-      "Sletter point, knogler og spilresultater for alle. Svar på invitationen røres ikke.",
-    icon: "trophy",
-    color: "bg-pastel-yellow",
-  },
-  {
-    mode: "answers",
-    title: "Nulstil svar",
-    description:
-      "Sætter alle gæster tilbage til \u201eafventer svar\u201c og rydder spilresultater. Gæstelisten og \u201einvitation sendt\u201c bevares.",
-    icon: "pending",
-    color: "bg-pastel-purple",
-  },
-  {
-    mode: "full",
-    title: "Nulstil hele databasen",
-    description:
-      "Sletter alle gæster og genskaber den oprindelige gæsteliste helt uden svar. Alt andet går tabt.",
-    icon: "warning",
-    color: "bg-pastel-pink",
-  },
-];
+}[] {
+  return [
+    {
+      mode: "scores",
+      title: t.resetScoresTitle,
+      description: t.resetScoresBody,
+      icon: "trophy",
+      color: "bg-pastel-yellow",
+    },
+    {
+      mode: "answers",
+      title: t.resetAnswersTitle,
+      description: t.resetAnswersBody,
+      icon: "pending",
+      color: "bg-pastel-purple",
+    },
+    {
+      mode: "full",
+      title: t.resetAllTitle,
+      description: t.resetAllBody,
+      icon: "warning",
+      color: "bg-pastel-pink",
+    },
+  ];
+}
 
 export default function DangerZone({ onDone }: { onDone: () => void }) {
+  const { t } = useAdminLang();
+  const options = buildOptions(t);
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState<Mode | null>(null);
   const [confirm, setConfirm] = useState("");
@@ -58,7 +60,7 @@ export default function DangerZone({ onDone }: { onDone: () => void }) {
         body: JSON.stringify({ mode, confirm }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Nulstilling mislykkedes");
+      if (!res.ok) throw new Error(data.error || t.resetFailed);
       setResult(data.message);
       setPending(null);
       setConfirm("");
@@ -70,35 +72,34 @@ export default function DangerZone({ onDone }: { onDone: () => void }) {
     }
   }
 
-  const active = OPTIONS.find((o) => o.mode === pending);
+  const active = options.find((o) => o.mode === pending);
 
   return (
     <section className="mt-8 border-4 border-red-700 bg-white">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between gap-2 p-3 bg-red-100 text-[10px]"
+        className="w-full flex items-center justify-between gap-2 p-3 bg-red-100 text-[16px]"
         aria-expanded={open}
       >
         <span className="flex items-center gap-2 text-red-800">
-          <Icon name="warning" /> Farezone — nulstil database
+          <Icon name="warning" /> {t.dangerZone}
         </span>
         <Icon name={open ? "up" : "right"} />
       </button>
 
       {open && (
         <div className="p-4">
-          <p className="text-[9px] opacity-70 mb-4">
-            Handlingerne kan ikke fortrydes. Serveren tager automatisk en backup ved hver
-            udrulning, men ikke her.
+          <p className="text-[14px] opacity-70 mb-4">
+            {t.dangerIntro}
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {OPTIONS.map((o) => (
+            {options.map((o) => (
               <div key={o.mode} className={`border-4 border-black p-3 ${o.color}`}>
-                <div className="text-[10px] mb-2 flex items-center gap-2">
+                <div className="text-[16px] mb-2 flex items-center gap-2">
                   <Icon name={o.icon} /> {o.title}
                 </div>
-                <p className="text-[8px] leading-relaxed mb-3 opacity-80">{o.description}</p>
+                <p className="text-[13px] leading-relaxed mb-3 opacity-80">{o.description}</p>
                 <button
                   onClick={() => {
                     setPending(o.mode);
@@ -106,21 +107,21 @@ export default function DangerZone({ onDone }: { onDone: () => void }) {
                     setError(null);
                     setResult(null);
                   }}
-                  className="pixel-btn bg-white border-2 border-black px-2 py-1 text-[9px] w-full"
+                  className="pixel-btn bg-white border-2 border-black px-2 py-1 text-[14px] w-full"
                 >
-                  Vælg
+                  {t.choose}
                 </button>
               </div>
             ))}
           </div>
 
           {result && (
-            <p className="mt-4 text-[9px] text-green-700 flex items-center gap-2">
+            <p className="mt-4 text-[14px] text-green-700 flex items-center gap-2">
               <Icon name="done" /> {result}
             </p>
           )}
           {error && !pending && (
-            <p className="mt-4 text-[9px] text-red-600 flex items-center gap-2">
+            <p className="mt-4 text-[14px] text-red-600 flex items-center gap-2">
               <Icon name="warning" /> {error}
             </p>
           )}
@@ -136,22 +137,22 @@ export default function DangerZone({ onDone }: { onDone: () => void }) {
             className="pixel-border bg-pastel-cream border-4 border-black p-5 w-full max-w-md text-black"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-[11px] mb-3 flex items-center gap-2 text-red-800">
+            <h2 className="text-[17px] mb-3 flex items-center gap-2 text-red-800">
               <Icon name="warning" /> {active.title}
             </h2>
-            <p className="text-[9px] mb-4 leading-relaxed">{active.description}</p>
-            <label className="block text-[8px] mb-1 opacity-70">
-              Skriv RESET for at bekræfte
+            <p className="text-[14px] mb-4 leading-relaxed">{active.description}</p>
+            <label className="block text-[13px] mb-1 opacity-70">
+              {t.typeResetToConfirm}
             </label>
             <input
               autoFocus
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               placeholder="RESET"
-              className="w-full border-4 border-black p-2 text-[10px] bg-white mb-3"
+              className="w-full border-4 border-black p-2 text-[16px] bg-white mb-3"
             />
             {error && (
-              <p className="text-[9px] text-red-600 mb-3 flex items-center gap-2">
+              <p className="text-[14px] text-red-600 mb-3 flex items-center gap-2">
                 <Icon name="warning" /> {error}
               </p>
             )}
@@ -159,17 +160,17 @@ export default function DangerZone({ onDone }: { onDone: () => void }) {
               <button
                 disabled={confirm !== "RESET" || busy}
                 onClick={() => run(active.mode)}
-                className="pixel-btn bg-pastel-pink border-4 border-black py-2 px-4 text-[9px] flex items-center gap-2 disabled:opacity-40"
+                className="pixel-btn bg-pastel-pink border-4 border-black py-2 px-4 text-[14px] flex items-center gap-2 disabled:opacity-40"
               >
                 {busy ? <Icon name="spinner" spin /> : <Icon name="trash" />}
-                {busy ? "Nulstiller…" : "Nulstil nu"}
+                {busy ? t.resetting : t.resetNow}
               </button>
               <button
                 disabled={busy}
                 onClick={() => setPending(null)}
-                className="pixel-btn bg-white border-4 border-black py-2 px-4 text-[9px] flex items-center gap-2"
+                className="pixel-btn bg-white border-4 border-black py-2 px-4 text-[14px] flex items-center gap-2"
               >
-                <Icon name="close" /> Annuller
+                <Icon name="close" /> {t.cancel}
               </button>
             </div>
           </div>

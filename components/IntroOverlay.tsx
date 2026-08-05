@@ -25,7 +25,7 @@ export default function IntroOverlay({
     <div className="absolute inset-0 z-40 flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm">
       <div className="pixel-border bg-white border-4 border-black p-5 sm:p-6 max-w-md w-full text-black text-center max-h-[92dvh] overflow-y-auto">
         {/* Language picker — Danish is the default, English is remembered */}
-        <div className="flex items-center justify-center gap-2 mb-4 text-[8px]">
+        <div className="flex items-center justify-center gap-2 mb-4 text-[13px]">
           <Icon name="language" className="opacity-60" />
           {LANGS.map((l) => (
             <button
@@ -46,8 +46,8 @@ export default function IntroOverlay({
           <Icon name="baby" className="text-[#d98ba5]" />
           <Icon name="cross" />
         </div>
-        <h1 className="text-[12px] leading-relaxed mb-1">{t.title}</h1>
-        <p className="text-[9px] leading-relaxed text-pastel-purple mb-4">
+        <h1 className="text-[19px] leading-relaxed mb-1">{t.title}</h1>
+        <p className="text-[14px] leading-relaxed text-pastel-purple mb-4">
           {t.welcome(name)}
         </p>
 
@@ -67,7 +67,7 @@ export default function IntroOverlay({
           </OscarSays>
         </div>
 
-        <div className="text-left text-[8px] leading-relaxed bg-pastel-cream border-2 border-black p-3 mb-4 space-y-1">
+        <div className="text-left text-[13px] leading-relaxed bg-pastel-cream border-2 border-black p-3 mb-4 space-y-1">
           <div className="mb-1 font-bold">{t.howToPlay}</div>
           <div className="flex items-center gap-2">
             <Icon name="left" />
@@ -92,13 +92,13 @@ export default function IntroOverlay({
         <div className="flex flex-col gap-2">
           <button
             onClick={onPlay}
-            className="pixel-btn bg-pastel-green border-4 border-black text-black text-[10px] py-3 flex items-center justify-center gap-2"
+            className="pixel-btn bg-pastel-green border-4 border-black text-black text-[16px] py-3 flex items-center justify-center gap-2"
           >
             <Icon name="play" /> {t.play}
           </button>
           <button
             onClick={onSkip}
-            className="pixel-btn bg-white border-4 border-black text-black text-[9px] py-2 opacity-90 flex items-center justify-center gap-2"
+            className="pixel-btn bg-white border-4 border-black text-black text-[14px] py-2 opacity-90 flex items-center justify-center gap-2"
           >
             {t.skipToAnswer} <Icon name="skip" />
           </button>

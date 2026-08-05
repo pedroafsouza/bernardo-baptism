@@ -2,12 +2,16 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-export type Lang = "da" | "en";
-export const LANGS: Lang[] = ["da", "en"];
+export type Lang = "da" | "en" | "pt";
+export const LANGS: Lang[] = ["da", "en", "pt"];
 export const DEFAULT_LANG: Lang = "da";
 const STORAGE_KEY = "lang";
 
-export const LANG_LABEL: Record<Lang, string> = { da: "Dansk", en: "English" };
+export const LANG_LABEL: Record<Lang, string> = {
+  da: "Dansk",
+  en: "English",
+  pt: "Português",
+};
 
 type Dict = {
   title: string;
@@ -218,24 +222,108 @@ const en: Dict = {
   newRecord: "New personal best!",
 };
 
-export const DICTS: Record<Lang, Dict> = { da, en };
+const pt: Dict = {
+  title: "Batizado do Bernardo",
+  welcome: (n) => `Bem-vindo, ${n}!`,
+  oscarIntro: {
+    p1: "Au au! Eu sou o ",
+    name: "Oscar",
+    p2: ", o cachorro do Bernardo. Ajude meu ursinho de capa a juntar as ",
+    blessings: "3 bênçãos sagradas",
+    p3: " para a igreja abrir. Pegue ",
+    treats: "os petiscos",
+    p4: " pelo caminho — são para mim, claro!",
+  },
+  howToPlay: "Como jogar",
+  howMove: "Mover: setas / A · D",
+  howJump: "Pular: PULA / seta para cima / W / espaço",
+  howCrosses: "Junte as 3 cruzes e entre na igreja",
+  howBones: "Pegue petiscos para o Oscar e chute a bola!",
+  play: "Jogar",
+  skipToAnswer: "Ir direto para a resposta",
+  skip: "Pular",
+  language: "Idioma",
+
+  loading: "Carregando…",
+  loadingGame: "Carregando o jogo…",
+  loadingWorld: "Carregando o mundo…",
+  loadingInvitation: "Carregando o convite…",
+  noCodeTitle: "Batizado do Bernardo",
+  noCodeBody: "Nenhum código de convite encontrado. Use o seu link pessoal, por exemplo",
+  noCodeExample: "/?code=GUEST_101",
+  notFoundTitle: "Convidado não encontrado",
+  notFoundBody: (c) => `Não encontramos um convite para o código ${c}.`,
+
+  bonesTooltip: "Petiscos para o Oscar",
+  music: "Música",
+  musicOn: "Desligar a música",
+  musicOff: "Ligar a música",
+
+  rsvpWelcome: (n) => `Bem-vindo, ${n}!`,
+  invitedTo: "Você está convidado para um batizado",
+  oscarChurch:
+    "Você chegou à igreja! O Bernardo e eu ficaríamos muito felizes em celebrar com você. Conte para nós se você vem.",
+  child: "Criança",
+  birthday: "Nascimento",
+  mother: "Mãe",
+  father: "Pai",
+  ceremony: "Cerimônia",
+  reception: "Recepção",
+  guestCount: "Número de convidados",
+  yes: "Sim, com alegria",
+  no: "Infelizmente não posso",
+  sending: "Enviando…",
+  thanks: "Obrigado!",
+  willMiss: "Vamos sentir sua falta",
+  thanksBody: (n) => `Mal podemos esperar para celebrar com você e seu grupo de ${n}.`,
+  declinedBody: "Obrigado por avisar. Esperamos ver você em outra ocasião.",
+  changeReply: "Alterar sua resposta",
+  close: "Fechar",
+  genericError: "Algo deu errado",
+
+  yourScore: "Sua pontuação",
+  bonesCollected: "Petiscos",
+  blessingsFound: "Bênçãos",
+  leaderboard: "Ranking",
+  leaderboardEmpty: "Ninguém jogou ainda — seja o primeiro!",
+  points: "pontos",
+  rank: "#",
+  player: "Jogador",
+  newRecord: "Novo recorde pessoal!",
+};
+
+export const DICTS: Record<Lang, Dict> = { da, en, pt };
+
+export function isLang(value: unknown): value is Lang {
+  return typeof value === "string" && (LANGS as string[]).includes(value);
+}
 
 export function readStoredLang(): Lang {
   if (typeof window === "undefined") return DEFAULT_LANG;
   const saved = window.localStorage.getItem(STORAGE_KEY);
-  return saved === "en" || saved === "da" ? saved : DEFAULT_LANG;
+  return isLang(saved) ? saved : DEFAULT_LANG;
 }
 
 /**
- * Language is Danish by default and only persisted once the guest actively picks
- * one, so a stored "en" survives reloads while everyone else keeps Danish.
+ * Language is Danish by default. An explicit `?lang=` on the invitation link
+ * wins (that is how a guest is invited in their own language) and is stored, so
+ * it survives reloads and the in-game language picker keeps working.
  */
-export function useLang() {
+export function useLang(preferred?: string | null) {
   const [lang, setLangState] = useState<Lang>(DEFAULT_LANG);
 
   useEffect(() => {
+    if (isLang(preferred)) {
+      setLangState(preferred);
+      try {
+        window.localStorage.setItem(STORAGE_KEY, preferred);
+      } catch {
+        /* private mode — fall back to in-memory only */
+      }
+      return;
+    }
     setLangState(readStoredLang());
-  }, []);
+  }, [preferred]);
 
   const setLang = useCallback((next: Lang) => {
     setLangState(next);
