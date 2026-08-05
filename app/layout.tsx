@@ -1,11 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { config } from "@fortawesome/fontawesome-svg-core";
-import "@fortawesome/fontawesome-svg-core/styles.css";
 import "./globals.css";
-
-// Next.js injects the Font Awesome stylesheet above, so the library must not
-// also inject it at runtime (that causes flashing oversized icons).
-config.autoAddCss = false;
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://bernardo-baptism.vercel.app";
 
