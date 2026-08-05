@@ -9,6 +9,7 @@ import AdminsPanel from "@/components/admin/AdminsPanel";
 import AuditPanel from "@/components/admin/AuditPanel";
 import PasswordChangeGate from "@/components/admin/PasswordChangeGate";
 import { copyText } from "@/lib/clipboard";
+import { headcount } from "@/lib/capacity";
 import {
   useAdminLang,
   ADMIN_LANGS,
@@ -23,6 +24,8 @@ type Guest = {
   name: string;
   group: string;
   status: string;
+  maxGuests: number;
+  maxKids: number;
   guestCount: number;
   kids: number;
   likely: boolean;
@@ -41,6 +44,8 @@ const emptyForm = {
   name: "",
   group: "Family",
   status: "PENDING",
+  maxGuests: 1,
+  maxKids: 0,
   guestCount: 1,
   kids: 0,
   likely: true,
@@ -255,6 +260,8 @@ function AdminPageInner() {
       name: g.name,
       group: g.group,
       status: g.status,
+      maxGuests: g.maxGuests,
+      maxKids: g.maxKids,
       guestCount: g.guestCount,
       kids: g.kids,
       likely: g.likely,
@@ -331,8 +338,10 @@ function AdminPageInner() {
     const attending = guests.filter((g) => g.status === "ATTENDING");
     const declined = guests.filter((g) => g.status === "DECLINED").length;
     const pending = guests.filter((g) => g.status === "PENDING").length;
-    const adults = attending.reduce((s, g) => s + (g.guestCount || 0), 0);
-    const kids = attending.reduce((s, g) => s + (g.kids || 0), 0);
+    // Belt and braces for the final head count: an answer stored before a
+    // capacity was tightened can never inflate the totals, and a household
+    // invited without children never contributes any.
+    const { adults, kids } = headcount(guests);
     const played = guests.filter((g) => g.playedAt).length;
     const sent = guests.filter((g) => g.inviteSent).length;
     return {
@@ -350,12 +359,13 @@ function AdminPageInner() {
 
   function exportCsv() {
     const header = [
-      "guestCode", "name", "group", "status", "guestCount", "kids", "likely",
+      "guestCode", "name", "group", "status", "maxGuests", "maxKids", "guestCount", "kids", "likely",
       "inviteSent", "inviteSentAt", "bones", "blessings", "score", "playedAt", "updatedAt",
     ];
     const rows = guests.map((g) =>
       [
-        g.guestCode, g.name, g.group, g.status, g.guestCount, g.kids, g.likely,
+        g.guestCode, g.name, g.group, g.status, g.maxGuests, g.maxKids,
+        g.guestCount, g.kids, g.likely,
         g.inviteSent, g.inviteSentAt ?? "",
         g.bones, g.blessings, g.score, g.playedAt ?? "", g.updatedAt,
       ]
@@ -735,21 +745,58 @@ function AdminPageInner() {
           </select>
           <input
             type="number"
-            min={0}
+            min={1}
             max={10}
-            value={form.guestCount}
-            onChange={(e) => setForm({ ...form, guestCount: Number(e.target.value) })}
-            title={t.adults}
+            value={form.maxGuests}
+            onChange={(e) => {
+              const maxGuests = Number(e.target.value);
+              setForm({
+                ...form,
+                maxGuests,
+                guestCount: Math.min(form.guestCount, Math.max(maxGuests, 0)),
+              });
+            }}
+            title={t.maxAdults}
+            placeholder={t.maxAdults}
             className="border-4 border-black p-2 text-[14px]"
           />
           <input
             type="number"
             min={0}
             max={10}
+            value={form.maxKids}
+            onChange={(e) => {
+              const maxKids = Number(e.target.value);
+              setForm({
+                ...form,
+                maxKids,
+                kids: Math.min(form.kids, Math.max(maxKids, 0)),
+              });
+            }}
+            title={t.maxKids}
+            placeholder={t.maxKids}
+            className="border-4 border-black p-2 text-[14px]"
+          />
+          <input
+            type="number"
+            min={0}
+            max={form.maxGuests}
+            value={form.guestCount}
+            onChange={(e) => setForm({ ...form, guestCount: Number(e.target.value) })}
+            title={t.adults}
+            placeholder={t.adults}
+            className="border-4 border-black p-2 text-[14px]"
+          />
+          <input
+            type="number"
+            min={0}
+            max={form.maxKids}
             value={form.kids}
             onChange={(e) => setForm({ ...form, kids: Number(e.target.value) })}
             title={t.kids}
-            className="border-4 border-black p-2 text-[14px]"
+            placeholder={t.kids}
+            disabled={form.maxKids === 0}
+            className="border-4 border-black p-2 text-[14px] disabled:opacity-50"
           />
           <label className="sm:col-span-3 flex items-center gap-2 text-[14px]">
             <input
@@ -910,14 +957,23 @@ function AdminPageInner() {
                       {g.status}
                     </span>
                   </td>
-                  <td className="p-2 text-center">{g.guestCount}</td>
+                  <td className="p-2 text-center" title={t.ofMax(g.maxGuests)}>
+                    {g.guestCount}
+                    <span className="opacity-40">/{g.maxGuests}</span>
+                  </td>
                   <td className="p-2 text-center">
-                    {g.kids > 0 ? (
-                      <span className="inline-flex items-center gap-1">
-                        <Icon name="child" /> {g.kids}
+                    {g.maxKids === 0 ? (
+                      <span className="opacity-40" title={t.noKidsInvited}>
+                        —
                       </span>
                     ) : (
-                      <span className="opacity-40">—</span>
+                      <span
+                        className="inline-flex items-center gap-1"
+                        title={t.ofMax(g.maxKids)}
+                      >
+                        <Icon name="child" /> {g.kids}
+                        <span className="opacity-40">/{g.maxKids}</span>
+                      </span>
                     )}
                   </td>
                   <td className="p-2 text-center">

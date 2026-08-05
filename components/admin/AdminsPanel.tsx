@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Icon from "@/components/Icon";
+import PasswordRequirements from "@/components/admin/PasswordRequirements";
 import type { AdminDict } from "@/lib/adminI18n";
+import { checkPasswordStrength } from "@/lib/passwordPolicy";
 
 export type AdminUserRow = {
   id: string;
@@ -63,6 +65,14 @@ export default function AdminsPanel({
     setError(null);
     setProblems([]);
     setNotice(null);
+
+    const strength = checkPasswordStrength(password, username);
+    if (!strength.ok) {
+      setProblems(strength.problems);
+      setError(t.passwordDoesNotMeetRules);
+      return;
+    }
+
     setSaving(true);
     try {
       const res = await fetch("/api/admin/admins", {
@@ -231,24 +241,14 @@ export default function AdminsPanel({
           </button>
         </div>
 
-        <div className="bg-pastel-cream border-4 border-black p-3 text-[13px] mt-3">
-          <div className="mb-1 flex items-center gap-2">
-            <Icon name="lock" /> {t.passwordRulesTitle}
-          </div>
-          <ul className="list-disc pl-5 space-y-0.5 opacity-80">
-            {t.passwordRules.map((rule) => (
-              <li key={rule}>{rule}</li>
-            ))}
-          </ul>
+        <div className="mt-3">
+          <PasswordRequirements
+            t={t}
+            password={password}
+            username={username}
+            serverProblems={problems}
+          />
         </div>
-
-        {problems.length > 0 && (
-          <ul className="text-red-600 text-[13px] mt-3 list-disc pl-5">
-            {problems.map((p) => (
-              <li key={p}>{t.passwordProblem(p)}</li>
-            ))}
-          </ul>
-        )}
         {error && (
           <p className="text-red-600 text-[14px] mt-3 flex items-center gap-2">
             <Icon name="warning" /> {error}

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/audit";
 import { RATE_RULES, rateLimit } from "@/lib/rateLimit";
 import { clientIp, readJson, safeId, safeInt } from "@/lib/security";
+import { clampParty } from "@/lib/capacity";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,7 @@ export async function POST(req: NextRequest) {
       guestCode?: unknown;
       status?: unknown;
       guestCount?: unknown;
+      kids?: unknown;
     }>(req, 2048);
     if (!body.ok) {
       if (body.reason === "MALICIOUS") {
@@ -48,16 +50,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
 
-    const safeCount = status === "DECLINED" ? 0 : safeInt(body.data.guestCount, 1, 5, 1);
-
     const existing = await prisma.guest.findUnique({ where: { guestCode } });
     if (!existing) {
       return NextResponse.json({ error: "Gæst ikke fundet" }, { status: 404 });
     }
 
+    // The invitation's capacity is the ceiling, and it is enforced here rather
+    // than only in the form: a household invited without children cannot end up
+    // in the final head count with children, whatever is posted.
+    const { guestCount: safeCount, kids: safeKids } = clampParty(
+      {
+        guestCount: safeInt(body.data.guestCount, 1, 10, 1),
+        kids: safeInt(body.data.kids, 0, 10, 0),
+      },
+      existing,
+      { attending: status === "ATTENDING" }
+    );
+
     const guest = await prisma.guest.update({
       where: { guestCode },
-      data: { status, guestCount: safeCount },
+      data: { status, guestCount: safeCount, kids: safeKids },
     });
 
     await audit({
@@ -65,7 +77,7 @@ export async function POST(req: NextRequest) {
       actorName: guest.name,
       targetType: "guest",
       targetId: guest.guestCode,
-      detail: `${status} · ${safeCount} adults`,
+      detail: `${status} · ${safeCount} adults · ${safeKids} kids`,
       req,
     });
 

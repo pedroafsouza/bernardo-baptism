@@ -70,6 +70,10 @@ export type AdminDict = {
   namePlaceholder: string;
   adults: string;
   kids: string;
+  maxAdults: string;
+  maxKids: string;
+  ofMax: (n: number) => string;
+  noKidsInvited: string;
   expectedToCome: string;
   inviteSent: string;
   update: string;
@@ -157,8 +161,12 @@ export type AdminDict = {
   passwordsDoNotMatch: string;
   passwordChanged: string;
   passwordRulesTitle: string;
-  passwordRules: string[];
+  /** Positive wording for one requirement, ticked off live as it is met. */
+  passwordRequirement: (rule: string) => string;
   passwordProblem: (problem: string) => string;
+  passwordAllRulesMet: string;
+  currentPasswordRequired: string;
+  passwordDoesNotMeetRules: string;
   firstRunHint: string;
 
   // admins
@@ -264,6 +272,32 @@ const PASSWORD_PROBLEMS_DA: Record<string, string> = {
   SEQUENTIAL: "Indeholder en oplagt talrække eller tastaturrække",
 };
 
+const PASSWORD_REQUIREMENTS_DA: Record<string, string> = {
+  TOO_SHORT: "Mindst 12 tegn",
+  TOO_LONG: "Højst 200 tegn",
+  NO_LOWERCASE: "Et lille bogstav",
+  NO_UPPERCASE: "Et stort bogstav",
+  NO_DIGIT: "Et tal",
+  NO_SYMBOL: "Et specialtegn (fx ! ? - # @)",
+  COMMON: "Ikke en almindelig adgangskode",
+  CONTAINS_USERNAME: "Indeholder ikke brugernavnet",
+  REPEATED: "Højst tre ens tegn i træk",
+  SEQUENTIAL: "Ingen oplagt tal- eller tastaturrække",
+};
+
+const PASSWORD_REQUIREMENTS_EN: Record<string, string> = {
+  TOO_SHORT: "At least 12 characters",
+  TOO_LONG: "At most 200 characters",
+  NO_LOWERCASE: "A lowercase letter",
+  NO_UPPERCASE: "An uppercase letter",
+  NO_DIGIT: "A digit",
+  NO_SYMBOL: "A symbol (e.g. ! ? - # @)",
+  COMMON: "Not a common password",
+  CONTAINS_USERNAME: "Does not contain the username",
+  REPEATED: "No more than three identical characters in a row",
+  SEQUENTIAL: "No obvious number or keyboard run",
+};
+
 const PASSWORD_PROBLEMS_EN: Record<string, string> = {
   TOO_SHORT: "At least 12 characters",
   TOO_LONG: "At most 200 characters",
@@ -320,8 +354,12 @@ const da: AdminDict = {
   editGuest: "Rediger gæst",
   addGuest: "Tilføj gæst",
   namePlaceholder: "Navn",
-  adults: "Voksne",
-  kids: "Børn",
+  adults: "Voksne (bekræftet)",
+  kids: "Børn (bekræftet)",
+  maxAdults: "Maks. voksne",
+  maxKids: "Maks. børn",
+  ofMax: (n) => `Invitationen giver plads til ${n}`,
+  noKidsInvited: "Invitationen er uden børn",
   expectedToCome: "Forventes at komme",
   inviteSent: "Invitation sendt",
   update: "Opdater",
@@ -404,16 +442,14 @@ const da: AdminDict = {
   repeatPassword: "Gentag ny adgangskode",
   savePassword: "Gem adgangskode",
   saving: "Gemmer…",
-  passwordsDoNotMatch: "De to adgangskoder er ikke ens",
+  passwordsDoNotMatch: "De to nye adgangskoder er ikke ens",
   passwordChanged: "Adgangskoden er skiftet. Alle andre browsere er logget ud.",
   passwordRulesTitle: "Krav til adgangskoden",
-  passwordRules: [
-    "Mindst 12 tegn",
-    "Store og små bogstaver",
-    "Mindst ét tal og ét specialtegn",
-    "Ikke en almindelig adgangskode og ikke brugernavnet",
-  ],
+  passwordRequirement: (r) => PASSWORD_REQUIREMENTS_DA[r] ?? r,
   passwordProblem: (p) => PASSWORD_PROBLEMS_DA[p] ?? p,
+  passwordAllRulesMet: "Adgangskoden opfylder alle krav",
+  currentPasswordRequired: "Indtast din nuværende adgangskode",
+  passwordDoesNotMeetRules: "Den nye adgangskode mangler noget — se listen ovenfor",
   firstRunHint:
     "Første gang: brugernavn admin og adgangskode admin — derefter skal du straks vælge en stærk adgangskode.",
 
@@ -503,8 +539,12 @@ const en: AdminDict = {
   editGuest: "Edit guest",
   addGuest: "Add guest",
   namePlaceholder: "Name",
-  adults: "Adults",
-  kids: "Kids",
+  adults: "Adults (confirmed)",
+  kids: "Kids (confirmed)",
+  maxAdults: "Max adults",
+  maxKids: "Max kids",
+  ofMax: (n) => `The invitation has room for ${n}`,
+  noKidsInvited: "This invitation does not include children",
   expectedToCome: "Expected to come",
   inviteSent: "Invitation sent",
   update: "Update",
@@ -590,13 +630,11 @@ const en: AdminDict = {
   passwordsDoNotMatch: "The two passwords do not match",
   passwordChanged: "Password changed. Every other browser has been signed out.",
   passwordRulesTitle: "Password requirements",
-  passwordRules: [
-    "At least 12 characters",
-    "Upper and lower case letters",
-    "At least one digit and one symbol",
-    "Not a common password, and not the username",
-  ],
+  passwordRequirement: (r) => PASSWORD_REQUIREMENTS_EN[r] ?? r,
   passwordProblem: (p) => PASSWORD_PROBLEMS_EN[p] ?? p,
+  passwordAllRulesMet: "The password meets every requirement",
+  currentPasswordRequired: "Enter your current password",
+  passwordDoesNotMeetRules: "The new password is missing something — see the list above",
   firstRunHint:
     "First run: username admin, password admin — you must then set a strong password straight away.",
 

@@ -25,26 +25,35 @@ concurrency:
 
 jobs:
   verify:
-    name: Typecheck and build
+    name: Typecheck, test and build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
+          cache: pnpm
 
-      - run: npm ci --no-audit --no-fund
+      # pnpm-lock.yaml is the lockfile in this repository, so `npm ci` had
+      # nothing to install from — the gate never actually ran.
+      - run: pnpm install --frozen-lockfile
 
       - name: Typecheck
-        run: npx tsc --noEmit
+        run: pnpm exec tsc --noEmit
+
+      - name: Unit tests
+        # Nothing ships without the password policy and the invitation capacity
+        # rules passing: both decide who gets in.
+        run: pnpm test
 
       - name: Build
         # A throwaway URL: the build only needs Prisma to resolve, never connects.
         env:
           DATABASE_URL: "file:./ci.db"
-        run: npm run build
+        run: pnpm run build
 
   deploy:
     name: Deploy to production

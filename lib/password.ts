@@ -1,5 +1,6 @@
 import { randomBytes, scrypt as scryptCb, timingSafeEqual } from "crypto";
 import { promisify } from "util";
+import { normalizePassword } from "./passwordPolicy";
 
 const scrypt = promisify(scryptCb) as (
   password: string | Buffer,
@@ -25,7 +26,7 @@ const MAXMEM = 64 * 1024 * 1024;
 
 export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16);
-  const hash = await scrypt(password.normalize("NFKC"), salt, KEYLEN, {
+  const hash = await scrypt(normalizePassword(password), salt, KEYLEN, {
     N,
     r: R,
     p: P,
@@ -40,7 +41,7 @@ export async function verifyPassword(password: string, stored: string): Promise<
     if (scheme !== "scrypt" || !saltHex || !hashHex) return false;
     const expected = Buffer.from(hashHex, "hex");
     const actual = await scrypt(
-      password.normalize("NFKC"),
+      normalizePassword(password),
       Buffer.from(saltHex, "hex"),
       expected.length,
       { N: Number(n), r: Number(r), p: Number(p), maxmem: MAXMEM }
@@ -57,56 +58,11 @@ export function generateToken(): string {
   return randomBytes(32).toString("hex");
 }
 
-export const MIN_PASSWORD_LENGTH = 12;
-
-const COMMON_PASSWORDS = new Set([
-  "password", "password1", "password123", "passw0rd", "admin", "admin123",
-  "administrator", "123456", "12345678", "123456789", "1234567890", "qwerty",
-  "qwerty123", "letmein", "welcome", "welcome1", "iloveyou", "monkey",
-  "dragon", "football", "baseball", "sunshine", "princess", "trustno1",
-  "abc123", "changeme", "secret", "master", "hello123", "pedro123",
-  "bernardo", "bernardo123", "baptism", "barnedaab", "barnedåb",
-]);
-
-export type PasswordProblem =
-  | "TOO_SHORT"
-  | "TOO_LONG"
-  | "NO_LOWERCASE"
-  | "NO_UPPERCASE"
-  | "NO_DIGIT"
-  | "NO_SYMBOL"
-  | "COMMON"
-  | "CONTAINS_USERNAME"
-  | "REPEATED"
-  | "SEQUENTIAL";
-
-/**
- * Strength policy for every password an admin picks. Deliberately strict: the
- * panel can delete the whole guest list, and the only thing in front of it is
- * this password.
- */
-export function checkPasswordStrength(
-  password: string,
-  username?: string
-): { ok: boolean; problems: PasswordProblem[] } {
-  const problems: PasswordProblem[] = [];
-  const pw = password ?? "";
-  const lower = pw.toLowerCase();
-
-  if (pw.length < MIN_PASSWORD_LENGTH) problems.push("TOO_SHORT");
-  if (pw.length > 200) problems.push("TOO_LONG");
-  if (!/[a-zæøå]/.test(lower)) problems.push("NO_LOWERCASE");
-  if (!/[A-ZÆØÅ]/.test(pw)) problems.push("NO_UPPERCASE");
-  if (!/[0-9]/.test(pw)) problems.push("NO_DIGIT");
-  if (!/[^A-Za-z0-9]/.test(pw)) problems.push("NO_SYMBOL");
-  if (COMMON_PASSWORDS.has(lower)) problems.push("COMMON");
-  if (username && username.length >= 3 && lower.includes(username.toLowerCase())) {
-    problems.push("CONTAINS_USERNAME");
-  }
-  if (/(.)\1{3,}/.test(pw)) problems.push("REPEATED");
-  if (/(0123|1234|2345|3456|4567|5678|6789|abcd|bcde|cdef|qwer|asdf)/i.test(pw)) {
-    problems.push("SEQUENTIAL");
-  }
-
-  return { ok: problems.length === 0, problems };
-}
+export {
+  MIN_PASSWORD_LENGTH,
+  MAX_PASSWORD_LENGTH,
+  PASSWORD_RULES,
+  checkPasswordStrength,
+  normalizePassword,
+} from "./passwordPolicy";
+export type { PasswordProblem, PasswordRule, PasswordStrength } from "./passwordPolicy";

@@ -33,18 +33,48 @@ export async function POST(req: NextRequest) {
   const session = await requireAdmin(req, { allowPasswordChangePending: true });
   if (isAuthFailure(session)) return session.response;
 
-  const body = await readJson<{ currentPassword?: unknown; newPassword?: unknown }>(
-    req,
-    2048
-  );
+  const body = await readJson<{
+    currentPassword?: unknown;
+    newPassword?: unknown;
+    repeatPassword?: unknown;
+  }>(req, 4096);
   if (!body.ok) return NextResponse.json({ error: body.error }, { status: body.status });
 
   const currentPassword = safePassword(body.data.currentPassword);
   const newPassword = safePassword(body.data.newPassword);
 
-  if (!currentPassword || !newPassword) {
+  // Every failure below names the field it belongs to, so the form can point at
+  // the box that is actually wrong instead of showing one anonymous red line.
+  if (!currentPassword) {
     return NextResponse.json(
-      { error: "Både nuværende og ny adgangskode er påkrævet" },
+      {
+        error: "Indtast din nuværende adgangskode",
+        code: "CURRENT_PASSWORD_REQUIRED",
+        field: "currentPassword",
+      },
+      { status: 400 }
+    );
+  }
+  if (!newPassword) {
+    return NextResponse.json(
+      {
+        error: "Indtast en ny adgangskode",
+        code: "NEW_PASSWORD_REQUIRED",
+        field: "newPassword",
+      },
+      { status: 400 }
+    );
+  }
+  if (
+    typeof body.data.repeatPassword === "string" &&
+    body.data.repeatPassword !== newPassword
+  ) {
+    return NextResponse.json(
+      {
+        error: "De to nye adgangskoder er ikke ens",
+        code: "MISMATCH",
+        field: "repeatPassword",
+      },
       { status: 400 }
     );
   }
@@ -64,7 +94,11 @@ export async function POST(req: NextRequest) {
       req,
     });
     return NextResponse.json(
-      { error: "Nuværende adgangskode er forkert" },
+      {
+        error: "Nuværende adgangskode er forkert",
+        code: "WRONG_CURRENT_PASSWORD",
+        field: "currentPassword",
+      },
       { status: 401 }
     );
   }
@@ -80,14 +114,24 @@ export async function POST(req: NextRequest) {
       req,
     });
     return NextResponse.json(
-      { error: "Adgangskoden er for svag", code: "WEAK_PASSWORD", problems: strength.problems },
+      {
+        error: "Den nye adgangskode opfylder ikke alle krav",
+        code: "WEAK_PASSWORD",
+        field: "newPassword",
+        problems: strength.problems,
+        rules: strength.rules,
+      },
       { status: 400 }
     );
   }
 
   if (await verifyPassword(newPassword, admin.passwordHash)) {
     return NextResponse.json(
-      { error: "Den nye adgangskode skal være en anden end den nuværende", code: "REUSED" },
+      {
+        error: "Den nye adgangskode skal være en anden end den nuværende",
+        code: "REUSED",
+        field: "newPassword",
+      },
       { status: 400 }
     );
   }

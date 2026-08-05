@@ -12,6 +12,10 @@ type Guest = {
   name: string;
   status: string;
   guestCount: number;
+  kids: number;
+  /** How many adults and children this invitation covers. */
+  maxGuests: number;
+  maxKids: number;
 };
 
 export type RunResult = {
@@ -40,9 +44,15 @@ export default function RsvpModal({
   onSaved,
 }: Props) {
   const t = DICTS[lang];
+  // An invitation is for a fixed number of people, so the picker only ever
+  // offers what the household was actually invited to bring. Nobody is asked
+  // about children they are not invited to bring — the row is simply absent.
+  const maxGuests = Math.max(1, guest?.maxGuests ?? 1);
+  const maxKids = Math.max(0, guest?.maxKids ?? 0);
   const [count, setCount] = useState(
-    guest?.guestCount && guest.guestCount > 0 ? guest.guestCount : 1
+    Math.min(guest?.guestCount && guest.guestCount > 0 ? guest.guestCount : 1, maxGuests)
   );
+  const [kids, setKids] = useState(Math.min(Math.max(guest?.kids ?? 0, 0), maxKids));
   const [submitting, setSubmitting] = useState(false);
   // An answer already stored for this guest is shown straight away, so
   // re-opening the RSVP never looks like the reply was lost.
@@ -77,6 +87,7 @@ export default function RsvpModal({
           guestCode: guest.guestCode,
           status,
           guestCount: status === "ATTENDING" ? count : 0,
+          kids: status === "ATTENDING" ? kids : 0,
         }),
       });
       if (!res.ok) {
@@ -88,6 +99,7 @@ export default function RsvpModal({
         ...guest,
         status,
         guestCount: status === "ATTENDING" ? count : 0,
+        kids: status === "ATTENDING" ? kids : 0,
       });
     } catch (e: any) {
       setError(e.message);
@@ -210,20 +222,54 @@ export default function RsvpModal({
                 <Icon name="guests" className="mr-1.5" />
                 {t.guestCount}
               </label>
-              <div className="flex gap-1 flex-wrap">
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <button
-                    key={n}
-                    onClick={() => setCount(n)}
-                    className={`pixel-btn w-10 h-10 border-4 border-black text-[17px] ${
-                      count === n ? "bg-pastel-green" : "bg-white"
-                    }`}
-                  >
-                    {n}
-                  </button>
-                ))}
-              </div>
+              {maxGuests > 1 ? (
+                <div className="flex gap-1 flex-wrap">
+                  {Array.from({ length: maxGuests }, (_, i) => i + 1).map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setCount(n)}
+                      className={`pixel-btn w-10 h-10 border-4 border-black text-[17px] ${
+                        count === n ? "bg-pastel-green" : "bg-white"
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[13px] opacity-70">{t.invitedForOne}</p>
+              )}
+              <p className="text-[12px] opacity-60 mt-1">{t.maxGuestsNote(maxGuests)}</p>
             </div>
+
+            {maxKids > 0 ? (
+              <div className="mb-4">
+                <label className="block text-[14px] sm:text-[16px] mb-2">
+                  <Icon name="child" className="mr-1.5" />
+                  {t.kidsCount}
+                </label>
+                <div className="flex gap-1 flex-wrap">
+                  {Array.from({ length: maxKids + 1 }, (_, i) => i).map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setKids(n)}
+                      className={`pixel-btn w-10 h-10 border-4 border-black text-[17px] ${
+                        kids === n ? "bg-pastel-green" : "bg-white"
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[12px] opacity-60 mt-1">{t.maxKidsNote(maxKids)}</p>
+              </div>
+            ) : (
+              <p className="text-[13px] opacity-70 mb-4 flex items-start gap-2">
+                <Icon name="child" className="mt-0.5" /> {t.noKidsNote}
+              </p>
+            )}
 
             {error && (
               <p className="text-red-600 text-[14px] mb-3 break-words flex items-center gap-2">
@@ -276,7 +322,7 @@ export default function RsvpModal({
               {result === "ATTENDING" ? t.thanks : t.willMiss}
             </h2>
             <p className="text-[14px] sm:text-[16px] leading-relaxed">
-              {result === "ATTENDING" ? t.thanksBody(count) : t.declinedBody}
+              {result === "ATTENDING" ? t.thanksBody(count, kids) : t.declinedBody}
             </p>
             <button
               onClick={() => setResult(null)}

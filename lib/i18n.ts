@@ -60,12 +60,17 @@ type Dict = {
   ceremony: string;
   reception: string;
   guestCount: string;
+  kidsCount: string;
+  invitedForOne: string;
+  maxGuestsNote: (n: number) => string;
+  maxKidsNote: (n: number) => string;
+  noKidsNote: string;
   yes: string;
   no: string;
   sending: string;
   thanks: string;
   willMiss: string;
-  thanksBody: (n: number) => string;
+  thanksBody: (adults: number, kids: number) => string;
   declinedBody: string;
   changeReply: string;
   close: string;
@@ -129,13 +134,21 @@ const da: Dict = {
   father: "Far",
   ceremony: "Ceremoni",
   reception: "Reception",
-  guestCount: "Antal gæster",
+  guestCount: "Antal voksne",
+  kidsCount: "Antal børn",
+  invitedForOne: "Din invitation gælder én person.",
+  maxGuestsNote: (n) => `Din invitation gælder op til ${n} ${n === 1 ? "voksen" : "voksne"}.`,
+  maxKidsNote: (n) => `Din invitation har plads til op til ${n} ${n === 1 ? "barn" : "børn"}.`,
+  noKidsNote: "Din invitation er uden børn.",
   yes: "Ja tak, med glæde",
   no: "Desværre, nej tak",
   sending: "Sender…",
   thanks: "Tak!",
   willMiss: "Vi vil savne dig",
-  thanksBody: (n) => `Vi glæder os til at fejre det sammen med dig og dit selskab på ${n}.`,
+  thanksBody: (adults, kids) =>
+    kids > 0
+      ? `Vi glæder os til at fejre det sammen med jer: ${adults} ${adults === 1 ? "voksen" : "voksne"} og ${kids} ${kids === 1 ? "barn" : "børn"}.`
+      : `Vi glæder os til at fejre det sammen med dig og dit selskab på ${adults}.`,
   declinedBody: "Tak, fordi du gav besked. Vi håber at se dig ved en anden lejlighed.",
   changeReply: "Ret dit svar",
   close: "Luk",
@@ -199,13 +212,21 @@ const en: Dict = {
   father: "Father",
   ceremony: "Ceremony",
   reception: "Reception",
-  guestCount: "Number of guests",
+  guestCount: "Number of adults",
+  kidsCount: "Number of children",
+  invitedForOne: "Your invitation is for one person.",
+  maxGuestsNote: (n) => `Your invitation is for up to ${n} adult${n === 1 ? "" : "s"}.`,
+  maxKidsNote: (n) => `Your invitation has room for up to ${n} child${n === 1 ? "" : "ren"}.`,
+  noKidsNote: "Your invitation does not include children.",
   yes: "Yes please, with joy",
   no: "Sadly, I can't make it",
   sending: "Sending…",
   thanks: "Thank you!",
   willMiss: "We'll miss you",
-  thanksBody: (n) => `We can't wait to celebrate with you and your party of ${n}.`,
+  thanksBody: (adults, kids) =>
+    kids > 0
+      ? `We can't wait to celebrate with you: ${adults} adult${adults === 1 ? "" : "s"} and ${kids} child${kids === 1 ? "" : "ren"}.`
+      : `We can't wait to celebrate with you and your party of ${adults}.`,
   declinedBody: "Thank you for letting us know. We hope to see you another time.",
   changeReply: "Change your reply",
   close: "Close",
@@ -269,13 +290,21 @@ const pt: Dict = {
   father: "Pai",
   ceremony: "Cerimônia",
   reception: "Recepção",
-  guestCount: "Número de convidados",
+  guestCount: "Número de adultos",
+  kidsCount: "Número de crianças",
+  invitedForOne: "O seu convite é para uma pessoa.",
+  maxGuestsNote: (n) => `O seu convite é para até ${n} adulto${n === 1 ? "" : "s"}.`,
+  maxKidsNote: (n) => `O seu convite tem lugar para até ${n} criança${n === 1 ? "" : "s"}.`,
+  noKidsNote: "O seu convite não inclui crianças.",
   yes: "Sim, com alegria",
   no: "Infelizmente não posso",
   sending: "Enviando…",
   thanks: "Obrigado!",
   willMiss: "Vamos sentir sua falta",
-  thanksBody: (n) => `Mal podemos esperar para celebrar com você e seu grupo de ${n}.`,
+  thanksBody: (adults, kids) =>
+    kids > 0
+      ? `Mal podemos esperar para celebrar com vocês: ${adults} adulto${adults === 1 ? "" : "s"} e ${kids} criança${kids === 1 ? "" : "s"}.`
+      : `Mal podemos esperar para celebrar com você e seu grupo de ${adults}.`,
   declinedBody: "Obrigado por avisar. Esperamos ver você em outra ocasião.",
   changeReply: "Alterar sua resposta",
   close: "Fechar",

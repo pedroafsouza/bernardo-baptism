@@ -2,6 +2,7 @@
   "name": "bernardo-baptism",
   "version": "1.0.0",
   "private": true,
+  "packageManager": "pnpm@11.0.9",
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
@@ -9,6 +10,8 @@
     "lint": "next lint",
     "postinstall": "prisma generate",
     "seed": "tsx --env-file-if-exists=.env prisma/seed.ts",
+    "db:backfill": "tsx --env-file-if-exists=.env prisma/backfill.ts",
+    "test": "tsx --test tests/*.test.ts",
     "db:push": "prisma db push"
   },
   "prisma": {

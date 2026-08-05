@@ -23,6 +23,9 @@ type Guest = {
   name: string;
   status: string;
   guestCount: number;
+  kids: number;
+  maxGuests: number;
+  maxKids: number;
 };
 
 function InvitationInner() {

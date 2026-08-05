@@ -65,7 +65,13 @@ export async function POST(req: NextRequest) {
   const strength = checkPasswordStrength(password, username);
   if (!strength.ok) {
     return NextResponse.json(
-      { error: "Adgangskoden er for svag", code: "WEAK_PASSWORD", problems: strength.problems },
+      {
+        error: "Adgangskoden opfylder ikke alle krav",
+        code: "WEAK_PASSWORD",
+        field: "password",
+        problems: strength.problems,
+        rules: strength.rules,
+      },
       { status: 400 }
     );
   }

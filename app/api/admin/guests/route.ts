@@ -4,6 +4,7 @@ import { isAuthFailure, requireAdmin } from "@/lib/adminAuth";
 import { audit } from "@/lib/audit";
 import { RATE_RULES, rateLimit } from "@/lib/rateLimit";
 import { clientIp, readJson, safeId, safeInt, safeString } from "@/lib/security";
+import { clampParty } from "@/lib/capacity";
 
 export const dynamic = "force-dynamic";
 
@@ -83,13 +84,26 @@ export async function POST(req: NextRequest) {
 
     const status = STATUSES.includes(String(raw.status)) ? String(raw.status) : "PENDING";
 
+    // Capacity first, then the confirmed numbers clamped to it: the admin form
+    // and the RSVP form both work this way, and the API is the last place that
+    // could let a child into a household invited without any.
+    const maxGuests = safeInt(raw.maxGuests, 1, 10, 1);
+    const maxKids = safeInt(raw.maxKids, 0, 10, 0);
+
     const data = {
       guestCode,
       name,
       group,
       status,
-      guestCount: safeInt(raw.guestCount, 0, 10, 1),
-      kids: safeInt(raw.kids, 0, 10, 0),
+      maxGuests,
+      maxKids,
+      ...clampParty(
+        {
+          guestCount: safeInt(raw.guestCount, 0, 10, 1),
+          kids: safeInt(raw.kids, 0, 10, 0),
+        },
+        { maxGuests, maxKids }
+      ),
       likely: raw.likely === undefined ? true : Boolean(raw.likely),
       inviteSent: Boolean(raw.inviteSent),
     };

@@ -67,23 +67,36 @@ git reset --hard "$DEPLOY_REF" --quiet
 git --no-pager log --oneline -1
 
 log "Installing dependencies"
-npm ci --no-audit --no-fund --silent
+# The repository is a pnpm project; fall back to npm only if pnpm is genuinely
+# unavailable, so a server without corepack can still deploy.
+if [ -f pnpm-lock.yaml ] && (command -v pnpm >/dev/null 2>&1 || corepack enable >/dev/null 2>&1); then
+  RUN="pnpm"
+  pnpm install --frozen-lockfile
+else
+  RUN="npm"
+  npm install --no-audit --no-fund --silent
+fi
 
 # ------------------------------------------------------------------ schema
 log "Applying the Prisma schema"
 # No --accept-data-loss on purpose: a destructive migration must stop the deploy.
 npx prisma db push --skip-generate
 
+# Columns added after the guest list existed start on their defaults, which
+# would shrink invitations already accepted. Idempotent, so it runs every time.
+log "Backfilling invitation capacity"
+"$RUN" run db:backfill
+
 # -------------------------------------------------------------------- seed
 case "$SEED_MODE" in
   force)
     log "Seeding (SEED_MODE=force) — upsert keeps existing answers"
-    npm run seed
+    "$RUN" run seed
     ;;
   if-missing)
     if [ "$DB_EXISTED" = false ]; then
       log "Fresh database — planting the guest list with no answers"
-      npm run seed
+      "$RUN" run seed
     else
       log "Existing database left untouched (SEED_MODE=if-missing)"
     fi
@@ -99,7 +112,7 @@ esac
 
 # ------------------------------------------------------------------- build
 log "Building"
-npm run build
+"$RUN" run build
 
 log "Restarting $SERVICE"
 sudo systemctl restart "$SERVICE"

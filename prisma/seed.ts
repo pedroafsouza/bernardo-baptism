@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { SEED_GUESTS } from "./guests";
 import { hashPassword } from "../lib/password";
+import { clampParty } from "../lib/capacity";
 
 const prisma = new PrismaClient();
 
@@ -26,6 +27,24 @@ async function seedAdmin() {
   console.log("Created the first administrator: admin / admin (must be changed at login).");
 }
 
+/**
+ * An answer given before a capacity was tightened must not survive it: nobody
+ * should appear in the final head count with more adults, or with children,
+ * than their invitation allows.
+ */
+async function clampToCapacity() {
+  const guests = await prisma.guest.findMany();
+  let fixed = 0;
+  for (const g of guests) {
+    const { guestCount, kids } = clampParty(g, g);
+    if (guestCount !== g.guestCount || kids !== g.kids) {
+      await prisma.guest.update({ where: { id: g.id }, data: { guestCount, kids } });
+      fixed++;
+    }
+  }
+  if (fixed > 0) console.log(`Trimmed ${fixed} answer(s) back to the invited capacity.`);
+}
+
 async function main() {
   console.log(`Seeding ${SEED_GUESTS.length} guests...`);
 
@@ -37,16 +56,29 @@ async function main() {
   for (const g of SEED_GUESTS) {
     await prisma.guest.upsert({
       where: { guestCode: g.guestCode },
-      // Re-seeding must never clobber an answer, a score or a sent invitation.
+      // Re-seeding must never clobber an answer, a score or a sent invitation —
+      // only the invitation's capacity, which is ours to decide.
       update: {
         name: g.name,
         group: g.group,
-        kids: g.kids,
+        maxGuests: g.guestCount,
+        maxKids: g.kids,
         likely: g.likely,
       },
-      create: g,
+      create: {
+        guestCode: g.guestCode,
+        name: g.name,
+        group: g.group,
+        likely: g.likely,
+        maxGuests: g.guestCount,
+        maxKids: g.kids,
+        guestCount: g.guestCount,
+        kids: g.kids,
+      },
     });
   }
+
+  await clampToCapacity();
 
   const total = await prisma.guest.count();
   console.log(`Done. ${total} guests in the database.`);

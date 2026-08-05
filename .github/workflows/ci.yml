@@ -1,0 +1,51 @@
+name: CI
+
+# Every push and every pull request has to pass the same three gates the
+# release runs: the types line up, the unit tests pass, and the site builds.
+on:
+  push:
+    branches-ignore: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Typecheck, test and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm exec tsc --noEmit
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Build
+        # A throwaway URL: the build only needs Prisma to resolve, never connects.
+        env:
+          DATABASE_URL: "file:./ci.db"
+        run: pnpm run build
+
+      - name: Schema and seed sanity check
+        # Proves the migration, the capacity backfill and the guest list all
+        # apply cleanly to an empty database before any of it reaches the server.
+        env:
+          DATABASE_URL: "file:./ci.db"
+        run: |
+          pnpm exec prisma db push --skip-generate
+          pnpm run seed
+          pnpm run db:backfill

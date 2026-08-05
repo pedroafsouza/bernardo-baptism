@@ -9,6 +9,7 @@ import {
   Church,
   Bone,
   CircleDot,
+  Circle,
   Play,
   FastForward,
   X,
@@ -104,6 +105,7 @@ export const ICONS = {
   done: SquareCheck,
   sent: Send,
   child: PersonStanding,
+  dot: Circle,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

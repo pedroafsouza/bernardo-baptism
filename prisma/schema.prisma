@@ -70,6 +70,14 @@ model Guest {
   name       String
   group      String
   status     String   @default("PENDING")
+  /// How many adults and children this household is invited to bring. The RSVP
+  /// form never offers more than this, and `maxKids = 0` means the invitation
+  /// simply has no room for children — the picker is not shown at all.
+  maxGuests  Int      @default(1)
+  maxKids    Int      @default(0)
+  /// What the household actually confirmed. Always within the maximums above,
+  /// so the final head count can never include a child nobody was invited to
+  /// bring.
   guestCount Int      @default(1)
   kids       Int      @default(0)
   likely     Boolean  @default(true)

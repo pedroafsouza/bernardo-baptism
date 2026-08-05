@@ -54,13 +54,15 @@ Built with Next.js 15 · React 19 · Phaser 3 · Prisma + SQLite · Tailwind
 
 `/admin` — real accounts, stored in the database.
 
-- **Guests** — guest list with group, status, adults, kids and score
+- **Guests** — guest list with group, status, invited capacity (max adults and
+  max kids), the numbers each household actually confirmed, and their score
 - **Invitation generator**: per guest, in **Danish, English and Portuguese**,
   in a short WhatsApp form and a long e-mail form, with copy-to-clipboard plus
   direct "open WhatsApp" / "open e-mail" links
 - **Invitation-sent tracking** with a timestamp, a filter and a progress bar
 - Headline counters: how many have accepted, and how many people that is
-  (adults + kids)
+  (adults + kids) — always counted within each invitation's capacity, so a
+  household invited without children never appears with any
 - CSV export
 - **Activity log** — every login (successful, failed or locked out), every
   invitation sent or opened, every guest and administrator change, every
@@ -189,6 +191,30 @@ reset is recorded in the log with the name of whoever ran it.
 | `npm run start`  | Serve the production build                |
 | `npm run db:push`| Sync the Prisma schema to SQLite          |
 | `npm run seed`   | Upsert the guest list (never overwrites answers) and create the first admin |
+| `npm run db:backfill` | Fill in invitation capacity for rows that predate it (idempotent) |
+| `npm test`       | Unit tests for the password policy and the invitation capacity rules |
+
+---
+
+## Invitation capacity
+
+Every household is invited for a fixed number of people: `maxGuests` adults and
+`maxKids` children. `maxKids = 0` means the invitation has no room for children,
+and the RSVP form does not even offer the choice.
+
+`guestCount` and `kids` are what the household confirmed. They are clamped to
+the capacity in the RSVP API, in the admin API and again when the head count is
+totalled (`lib/capacity.ts`), so an answer given before a capacity was tightened
+can never inflate the final numbers.
+
+---
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every branch and pull request: typecheck,
+unit tests, production build, and a schema-plus-seed dry run against an empty
+database. The release workflow runs the same gates before it is allowed to
+deploy.
 
 ---
 

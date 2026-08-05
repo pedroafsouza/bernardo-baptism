@@ -64,6 +64,20 @@ function safeDecode(value: string): string {
   }
 }
 
+/**
+ * Fields whose value is never interpolated into a query, a page or a shell —
+ * only hashed and compared. Screening them for injection markers would reject
+ * genuinely strong passwords such as `Kirke--Hund#2026`, which is exactly the
+ * kind of password we ask people to choose.
+ */
+export const UNSCREENED_KEYS = new Set([
+  "password",
+  "currentPassword",
+  "newPassword",
+  "repeatPassword",
+  "temporaryPassword",
+]);
+
 /** Recursively scans anything parsed from a request body or query string. */
 export function containsMaliciousInput(input: unknown, depth = 0): boolean {
   if (depth > 6) return true; // absurdly nested payload — treat as hostile
@@ -76,7 +90,9 @@ export function containsMaliciousInput(input: unknown, depth = 0): boolean {
     const entries = Object.entries(input as Record<string, unknown>);
     if (entries.length > 60) return true;
     return entries.some(
-      ([k, v]) => looksMalicious(k) || containsMaliciousInput(v, depth + 1)
+      ([k, v]) =>
+        looksMalicious(k) ||
+        (!UNSCREENED_KEYS.has(k) && containsMaliciousInput(v, depth + 1))
     );
   }
   return false;

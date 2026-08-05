@@ -5,8 +5,9 @@
  * the link a guest receives is unmistakably theirs (and a small joke on its
  * own). Solo guests get the "-ARDO" ending borrowed from Bernardo himself.
  *
- * `guestCount` is the number of adults; `kids` is tracked separately so the
- * catering headcount stays accurate.
+ * `guestCount` is the number of adults the household is invited to bring and
+ * `kids` how many children — both are maximums. A household with `kids: 0` is
+ * invited without children, and the RSVP form will not even offer the choice.
  */
 export type SeedGuest = {
   guestCode: string;
