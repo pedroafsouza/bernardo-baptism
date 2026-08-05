@@ -1,7 +1,30 @@
 import { PrismaClient } from "@prisma/client";
 import { SEED_GUESTS } from "./guests";
+import { hashPassword } from "../lib/password";
 
 const prisma = new PrismaClient();
+
+/**
+ * A database with no administrator is a locked door with no key, so the seed
+ * plants the documented first-run account. It carries a temporary password and
+ * can do nothing until a strong one replaces it at first login.
+ */
+async function seedAdmin() {
+  const existing = await prisma.adminUser.count();
+  if (existing > 0) {
+    console.log(`${existing} administrator(s) already present — untouched.`);
+    return;
+  }
+  await prisma.adminUser.create({
+    data: {
+      username: "admin",
+      passwordHash: await hashPassword("admin"),
+      mustChangePassword: true,
+      createdByName: "seed",
+    },
+  });
+  console.log("Created the first administrator: admin / admin (must be changed at login).");
+}
 
 async function main() {
   console.log(`Seeding ${SEED_GUESTS.length} guests...`);
@@ -27,6 +50,8 @@ async function main() {
 
   const total = await prisma.guest.count();
   console.log(`Done. ${total} guests in the database.`);
+
+  await seedAdmin();
 }
 
 main()

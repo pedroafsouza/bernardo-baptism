@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { ADMIN_SECRET } from "@/lib/config";
+import { isAuthFailure, requireAdmin } from "@/lib/adminAuth";
+import { audit } from "@/lib/audit";
+import { RATE_RULES, rateLimit } from "@/lib/rateLimit";
+import { clientIp, readJson, safeString } from "@/lib/security";
 import { SEED_GUESTS } from "@/prisma/guests";
 
-function isAuthorized(req: NextRequest): boolean {
-  if (!ADMIN_SECRET) return false;
-  const header = req.headers.get("x-admin-secret");
-  const cookie = req.cookies.get("admin_secret")?.value;
-  return header === ADMIN_SECRET || cookie === ADMIN_SECRET;
-}
+export const dynamic = "force-dynamic";
 
 const RESET_MODES = ["scores", "answers", "full"] as const;
 type ResetMode = (typeof RESET_MODES)[number];
@@ -25,24 +23,30 @@ type ResetMode = (typeof RESET_MODES)[number];
  *   full    — delete every guest and re-plant the canonical list from
  *             prisma/guests.ts. Everything else is lost.
  *
- * All three require the literal confirmation string "RESET", so a stray click
- * or a replayed request cannot trigger one.
+ * All three require the literal confirmation string "RESET", are throttled hard,
+ * and are written to the audit trail with the name of whoever pulled the lever.
  */
 export async function POST(req: NextRequest) {
-  if (!isAuthorized(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const limit = rateLimit(`reset:${clientIp(req)}`, RATE_RULES.destructive);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "For mange forespørgsler" },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfter) } }
+    );
   }
 
-  const { mode, confirm } = (await req.json().catch(() => ({}))) as {
-    mode?: string;
-    confirm?: string;
-  };
+  const session = await requireAdmin(req);
+  if (isAuthFailure(session)) return session.response;
 
-  if (confirm !== "RESET") {
+  const body = await readJson<{ mode?: unknown; confirm?: unknown }>(req, 2048);
+  if (!body.ok) return NextResponse.json({ error: body.error }, { status: body.status });
+
+  if (safeString(body.data.confirm, { max: 20 }) !== "RESET") {
     return NextResponse.json({ error: "Skriv RESET for at bekræfte" }, { status: 400 });
   }
 
-  if (!RESET_MODES.includes(mode as ResetMode)) {
+  const mode = RESET_MODES.find((m) => m === body.data.mode);
+  if (!mode) {
     return NextResponse.json(
       { error: `mode skal være en af: ${RESET_MODES.join(", ")}` },
       { status: 400 }
@@ -50,11 +54,26 @@ export async function POST(req: NextRequest) {
   }
 
   const before = await prisma.guest.count();
+  const actor = session.admin;
+
+  async function record(affected: number, detail: string) {
+    await audit({
+      action: "DATABASE_RESET",
+      actorName: actor.username,
+      actorId: actor.id,
+      targetType: "database",
+      targetId: mode,
+      detail,
+      req,
+    });
+    return affected;
+  }
 
   if (mode === "scores") {
     const { count } = await prisma.guest.updateMany({
       data: { bones: 0, blessings: 0, score: 0, playedAt: null },
     });
+    await record(count, `Leaderboard cleared for ${count} guests`);
     return NextResponse.json({
       ok: true,
       mode,
@@ -67,6 +86,7 @@ export async function POST(req: NextRequest) {
     const { count } = await prisma.guest.updateMany({
       data: { status: "PENDING", bones: 0, blessings: 0, score: 0, playedAt: null },
     });
+    await record(count, `${count} guests reset to PENDING`);
     return NextResponse.json({
       ok: true,
       mode,
@@ -79,6 +99,7 @@ export async function POST(req: NextRequest) {
   await prisma.guest.deleteMany({});
   await prisma.guest.createMany({ data: SEED_GUESTS });
   const after = await prisma.guest.count();
+  await record(after, `Full reset: ${before} guests deleted, ${after} recreated`);
 
   return NextResponse.json({
     ok: true,

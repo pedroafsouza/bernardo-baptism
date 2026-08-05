@@ -5,6 +5,9 @@ import { GROUPS, STATUSES } from "@/lib/config";
 import Icon, { type IconName } from "@/components/Icon";
 import InviteMessageModal from "@/components/admin/InviteMessageModal";
 import DangerZone from "@/components/admin/DangerZone";
+import AdminsPanel from "@/components/admin/AdminsPanel";
+import AuditPanel from "@/components/admin/AuditPanel";
+import PasswordChangeGate from "@/components/admin/PasswordChangeGate";
 import { copyText } from "@/lib/clipboard";
 import {
   useAdminLang,
@@ -44,6 +47,14 @@ const emptyForm = {
   inviteSent: false,
 };
 
+type AdminIdentity = {
+  id: string;
+  username: string;
+  mustChangePassword: boolean;
+};
+
+type Tab = "guests" | "audit" | "admins" | "account";
+
 function LangToggle({
   lang,
   setLang,
@@ -77,8 +88,10 @@ export default function AdminPage() {
   const { lang, setLang, t } = useAdminLang();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [authed, setAuthed] = useState(false);
+  const [admin, setAdmin] = useState<AdminIdentity | null>(null);
   const [checking, setChecking] = useState(true);
+  const [tab, setTab] = useState<Tab>("guests");
+  const [notice, setNotice] = useState<string | null>(null);
   const [guests, setGuests] = useState<Guest[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -93,20 +106,62 @@ export default function AdminPage() {
   // and Brazilian, so the link carries the language it was written for.
   const [linkLang, setLinkLang] = useState<MessageLang>("da");
 
-  // The session lives in an httpOnly cookie, so every admin call just sends
-  // credentials and a 401 means "not logged in".
+  const authed = admin !== null;
+  const mustChangePassword = admin?.mustChangePassword ?? false;
+  const locale = lang === "en" ? "en-GB" : "da-DK";
+
+  /** Records the browser-only actions (opening an invitation, copying a link). */
+  const logAction = useCallback(
+    (action: "INVITE_MESSAGE_OPENED" | "GUEST_LINK_COPIED", guestCode: string, detail?: string) => {
+      void fetch("/api/admin/audit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ action, guestCode, detail }),
+      }).catch(() => undefined);
+    },
+    []
+  );
+
+  // The session lives in an httpOnly cookie; this asks the server who we are.
+  const loadSession = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/login", { credentials: "same-origin" });
+      const data = await res.json().catch(() => ({}));
+      if (data?.authenticated && data.admin) {
+        setAdmin({
+          id: data.admin.id,
+          username: data.admin.username,
+          mustChangePassword: Boolean(data.mustChangePassword),
+        });
+        return Boolean(data.mustChangePassword) === false;
+      }
+      setAdmin(null);
+      return false;
+    } catch {
+      setAdmin(null);
+      return false;
+    } finally {
+      setChecking(false);
+    }
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const res = await fetch("/api/admin/guests", { credentials: "same-origin" });
       if (res.status === 401) {
-        setAuthed(false);
+        setAdmin(null);
+        return false;
+      }
+      if (res.status === 403) {
+        // Temporary password: the panel is locked to the password screen.
+        setAdmin((a) => (a ? { ...a, mustChangePassword: true } : a));
         return false;
       }
       const data = await res.json();
       setGuests(data.guests || []);
-      setAuthed(true);
       return true;
     } catch (e: any) {
       setError(e.message || t.couldNotLoad);
@@ -118,8 +173,11 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    void (async () => {
+      const ready = await loadSession();
+      if (ready) await load();
+    })();
+  }, [loadSession, load]);
 
   async function login(e: React.FormEvent) {
     e.preventDefault();
@@ -130,21 +188,34 @@ export default function AdminPage() {
       credentials: "same-origin",
       body: JSON.stringify({ username, password }),
     });
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      const d = await res.json().catch(() => ({}));
-      setLoginError(d.error || t.loginFailed);
+      setLoginError(data.error || t.loginFailed);
       return;
     }
     setPassword("");
-    await load();
+    setAdmin({
+      id: data.admin.id,
+      username: data.admin.username,
+      mustChangePassword: Boolean(data.mustChangePassword),
+    });
+    if (!data.mustChangePassword) await load();
   }
 
   async function logout() {
     await fetch("/api/admin/login", { method: "DELETE", credentials: "same-origin" });
-    setAuthed(false);
+    setAdmin(null);
     setGuests([]);
     setUsername("");
     setPassword("");
+    setTab("guests");
+  }
+
+  async function afterPasswordChange() {
+    setNotice(t.passwordChanged);
+    setAdmin((a) => (a ? { ...a, mustChangePassword: false } : a));
+    setTab("guests");
+    await load();
   }
 
   async function saveGuest(e: React.FormEvent) {
@@ -224,7 +295,13 @@ export default function AdminPage() {
     }
     setError(null);
     setCopiedCode(code);
+    logAction("GUEST_LINK_COPIED", code, `Language: ${linkLang}`);
     setTimeout(() => setCopiedCode(null), 1500);
+  }
+
+  function openMessage(g: Guest) {
+    setMessageGuest(g);
+    logAction("INVITE_MESSAGE_OPENED", g.guestCode, g.name);
   }
 
   const filtered = useMemo(
@@ -356,7 +433,23 @@ export default function AdminPage() {
           <button className="pixel-btn w-full bg-pastel-green border-4 border-black py-3 text-[16px] flex items-center justify-center gap-2">
             <Icon name="lock" /> {t.login}
           </button>
+
+          <p className="text-[12px] opacity-60 mt-4 leading-snug">{t.firstRunHint}</p>
         </form>
+      </main>
+    );
+  }
+
+  // A temporary password can do exactly one thing: become a strong one.
+  if (mustChangePassword && admin) {
+    return (
+      <main className="min-h-screen flex items-center justify-center p-6 bg-pastel-blue">
+        <PasswordChangeGate
+          t={t}
+          username={admin.username}
+          forced
+          onDone={() => void afterPasswordChange()}
+        />
       </main>
     );
   }
@@ -381,12 +474,14 @@ export default function AdminPage() {
           </h1>
           <div className="flex gap-2 flex-wrap items-center">
             <LangToggle lang={lang} setLang={setLang} label={t.language} />
-            <button
-              onClick={exportCsv}
-              className="pixel-btn bg-pastel-green border-4 border-black py-2 px-3 text-[14px] flex items-center gap-2"
-            >
-              <Icon name="csv" /> {t.exportCsv}
-            </button>
+            {tab === "guests" && (
+              <button
+                onClick={exportCsv}
+                className="pixel-btn bg-pastel-green border-4 border-black py-2 px-3 text-[14px] flex items-center gap-2"
+              >
+                <Icon name="csv" /> {t.exportCsv}
+              </button>
+            )}
             <button
               onClick={logout}
               className="pixel-btn bg-pastel-pink border-4 border-black py-2 px-3 text-[14px] flex items-center gap-2"
@@ -396,6 +491,61 @@ export default function AdminPage() {
           </div>
         </div>
 
+        {/* Menu */}
+        <nav className="flex flex-wrap items-center gap-2 mb-5">
+          {(
+            [
+              { id: "guests", label: t.menuGuests, icon: "guests" },
+              { id: "audit", label: t.menuAudit, icon: "keyboard" },
+              { id: "admins", label: t.menuAdmins, icon: "lock" },
+              { id: "account", label: t.menuAccount, icon: "key" },
+            ] as { id: Tab; label: string; icon: IconName }[]
+          ).map((item) => (
+            <button
+              key={item.id}
+              onClick={() => {
+                setNotice(null);
+                setTab(item.id);
+              }}
+              aria-current={tab === item.id ? "page" : undefined}
+              className={`pixel-btn border-4 border-black py-2 px-3 text-[14px] flex items-center gap-2 ${
+                tab === item.id ? "bg-pastel-blue" : "bg-white opacity-75"
+              }`}
+            >
+              <Icon name={item.icon} /> {item.label}
+            </button>
+          ))}
+          {admin && (
+            <span className="text-[13px] opacity-60 ml-auto flex items-center gap-2">
+              <Icon name="user" /> {t.signedInAs(admin.username)}
+            </span>
+          )}
+        </nav>
+
+        {notice && (
+          <p className="text-green-700 text-[14px] mb-4 flex items-center gap-2">
+            <Icon name="done" /> {notice}
+          </p>
+        )}
+
+        {tab === "audit" && <AuditPanel t={t} locale={locale} />}
+
+        {tab === "admins" && (
+          <AdminsPanel t={t} locale={locale} onSelfRemoved={() => void logout()} />
+        )}
+
+        {tab === "account" && admin && (
+          <PasswordChangeGate
+            t={t}
+            username={admin.username}
+            forced={false}
+            onDone={() => void afterPasswordChange()}
+            onCancel={() => setTab("guests")}
+          />
+        )}
+
+        {tab === "guests" && (
+          <>
         {/* Headline answer: how many have accepted, and how many people that is */}
         <div className="pixel-border bg-pastel-green border-4 border-black p-4 mb-4 flex flex-wrap items-center justify-between gap-4">
           <div>
@@ -475,7 +625,7 @@ export default function AdminPage() {
                   <li key={g.id} className="flex items-center justify-between gap-2">
                     <span className="truncate">{g.name}</span>
                     <button
-                      onClick={() => setMessageGuest(g)}
+                      onClick={() => openMessage(g)}
                       className="pixel-btn bg-pastel-green border-2 border-black px-2 py-1 shrink-0 flex items-center gap-1"
                     >
                       <Icon name="mail" /> {t.message}
@@ -783,7 +933,7 @@ export default function AdminPage() {
                   <td className="p-2">
                     <div className="flex gap-1 flex-wrap">
                       <button
-                        onClick={() => setMessageGuest(g)}
+                        onClick={() => openMessage(g)}
                         className="pixel-btn bg-pastel-green border-2 border-black px-2 py-1 flex items-center gap-1"
                       >
                         <Icon name="mail" /> {t.viewMessage}
@@ -823,6 +973,8 @@ export default function AdminPage() {
         </div>
 
         <DangerZone onDone={() => void load()} />
+          </>
+        )}
       </div>
 
       {messageGuest && (

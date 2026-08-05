@@ -1,12 +1,10 @@
 /**
- * Admin credentials live only in the environment — never in the repository.
- * See `.env.example`; the login route refuses every attempt while they are unset,
- * so a misconfigured deploy fails closed instead of exposing a default password.
+ * Admin accounts live in the database (see `lib/adminAuth.ts`), not in the
+ * environment: passwords are salted scrypt hashes, sessions are revocable, and
+ * administrators are added or removed from the panel itself. A fresh database
+ * bootstraps a single `admin` / `admin` account that can do nothing except set
+ * a strong password of its own.
  */
-export const ADMIN_SECRET = process.env.ADMIN_SECRET || "";
-export const ADMIN_USER = process.env.ADMIN_USER || "";
-export const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
-export const ADMIN_CONFIGURED = Boolean(ADMIN_USER && ADMIN_PASSWORD && ADMIN_SECRET);
 
 export const EVENT = {
   child: "Bernardo Freitas de Souza",

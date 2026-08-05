@@ -136,6 +136,145 @@ export type AdminDict = {
   resetNow: string;
   resetting: string;
   resetFailed: string;
+
+  // menu
+  menuGuests: string;
+  menuAudit: string;
+  menuAdmins: string;
+  menuAccount: string;
+  signedInAs: (name: string) => string;
+
+  // password
+  changePassword: string;
+  changePasswordBody: string;
+  mustChangePasswordTitle: string;
+  mustChangePasswordBody: string;
+  currentPassword: string;
+  newPassword: string;
+  repeatPassword: string;
+  savePassword: string;
+  saving: string;
+  passwordsDoNotMatch: string;
+  passwordChanged: string;
+  passwordRulesTitle: string;
+  passwordRules: string[];
+  passwordProblem: (problem: string) => string;
+  firstRunHint: string;
+
+  // admins
+  adminsTitle: string;
+  adminsIntro: string;
+  addAdmin: string;
+  addAdminIntro: string;
+  createAdmin: string;
+  temporaryPasswordLabel: string;
+  temporaryPassword: string;
+  active: string;
+  you: string;
+  colAdmin: string;
+  colStatusAdmin: string;
+  colLastLogin: string;
+  colCreated: string;
+  removeSelf: string;
+  removeSelfConfirm: string;
+  removeAdminConfirm: (name: string) => string;
+  lastAdminProtected: string;
+  adminCreated: (name: string) => string;
+  adminRemoved: (name: string) => string;
+
+  // audit
+  auditTitle: string;
+  auditIntro: string;
+  auditEmpty: string;
+  auditCount: (n: number) => string;
+  allActions: string;
+  allActors: string;
+  refresh: string;
+  colWhen: string;
+  colAction: string;
+  colWho: string;
+  colTarget: string;
+  colDetail: string;
+  colIp: string;
+  previous: string;
+  next: string;
+  pageOf: (page: number, pages: number) => string;
+  auditAction: (action: string) => string;
+};
+
+/** Human-readable action names, shared shape between the two languages. */
+const AUDIT_LABELS_DA: Record<string, string> = {
+  LOGIN_SUCCESS: "Log ind",
+  LOGIN_FAILED: "Mislykket login",
+  LOGIN_LOCKED: "Konto låst",
+  LOGOUT: "Log ud",
+  PASSWORD_CHANGED: "Adgangskode ændret",
+  PASSWORD_REJECTED: "Adgangskode afvist",
+  ADMIN_CREATED: "Administrator oprettet",
+  ADMIN_DELETED: "Administrator slettet",
+  ADMIN_BOOTSTRAPPED: "Første administrator",
+  GUEST_CREATED: "Gæst oprettet",
+  GUEST_UPDATED: "Gæst opdateret",
+  GUEST_DELETED: "Gæst slettet",
+  INVITE_MARKED_SENT: "Invitation sendt",
+  INVITE_MARKED_UNSENT: "Invitation fortrudt",
+  INVITE_MESSAGE_OPENED: "Invitation åbnet",
+  GUEST_LINK_COPIED: "Gæstelink kopieret",
+  RSVP_SUBMITTED: "Svar modtaget",
+  DATABASE_RESET: "Database nulstillet",
+  RATE_LIMITED: "Begrænset (for mange forsøg)",
+  REQUEST_BLOCKED: "Forespørgsel blokeret",
+  UNAUTHORIZED: "Uautoriseret adgang",
+};
+
+const AUDIT_LABELS_EN: Record<string, string> = {
+  LOGIN_SUCCESS: "Signed in",
+  LOGIN_FAILED: "Failed login",
+  LOGIN_LOCKED: "Account locked",
+  LOGOUT: "Signed out",
+  PASSWORD_CHANGED: "Password changed",
+  PASSWORD_REJECTED: "Password rejected",
+  ADMIN_CREATED: "Administrator added",
+  ADMIN_DELETED: "Administrator removed",
+  ADMIN_BOOTSTRAPPED: "First administrator",
+  GUEST_CREATED: "Guest created",
+  GUEST_UPDATED: "Guest updated",
+  GUEST_DELETED: "Guest deleted",
+  INVITE_MARKED_SENT: "Invitation sent",
+  INVITE_MARKED_UNSENT: "Invitation un-sent",
+  INVITE_MESSAGE_OPENED: "Invitation opened",
+  GUEST_LINK_COPIED: "Guest link copied",
+  RSVP_SUBMITTED: "RSVP received",
+  DATABASE_RESET: "Database reset",
+  RATE_LIMITED: "Rate limited",
+  REQUEST_BLOCKED: "Request blocked",
+  UNAUTHORIZED: "Unauthorised access",
+};
+
+const PASSWORD_PROBLEMS_DA: Record<string, string> = {
+  TOO_SHORT: "Mindst 12 tegn",
+  TOO_LONG: "Højst 200 tegn",
+  NO_LOWERCASE: "Mangler et lille bogstav",
+  NO_UPPERCASE: "Mangler et stort bogstav",
+  NO_DIGIT: "Mangler et tal",
+  NO_SYMBOL: "Mangler et specialtegn",
+  COMMON: "For almindelig adgangskode",
+  CONTAINS_USERNAME: "Må ikke indeholde brugernavnet",
+  REPEATED: "For mange gentagne tegn",
+  SEQUENTIAL: "Indeholder en oplagt talrække eller tastaturrække",
+};
+
+const PASSWORD_PROBLEMS_EN: Record<string, string> = {
+  TOO_SHORT: "At least 12 characters",
+  TOO_LONG: "At most 200 characters",
+  NO_LOWERCASE: "Needs a lowercase letter",
+  NO_UPPERCASE: "Needs an uppercase letter",
+  NO_DIGIT: "Needs a digit",
+  NO_SYMBOL: "Needs a symbol",
+  COMMON: "Too common a password",
+  CONTAINS_USERNAME: "Must not contain the username",
+  REPEATED: "Too many repeated characters",
+  SEQUENTIAL: "Contains an obvious sequence",
 };
 
 const da: AdminDict = {
@@ -248,6 +387,77 @@ const da: AdminDict = {
   resetNow: "Nulstil nu",
   resetting: "Nulstiller…",
   resetFailed: "Nulstilling mislykkedes",
+
+  menuGuests: "Gæster",
+  menuAudit: "Log",
+  menuAdmins: "Adgang",
+  menuAccount: "Min konto",
+  signedInAs: (n) => `Logget ind som ${n}`,
+
+  changePassword: "Skift adgangskode",
+  changePasswordBody: "Vælg en ny adgangskode for",
+  mustChangePasswordTitle: "Vælg en stærk adgangskode",
+  mustChangePasswordBody:
+    "Kontoen bruger stadig en midlertidig adgangskode og kan ikke bruges til andet, før den er skiftet. Det gælder",
+  currentPassword: "Nuværende adgangskode",
+  newPassword: "Ny adgangskode",
+  repeatPassword: "Gentag ny adgangskode",
+  savePassword: "Gem adgangskode",
+  saving: "Gemmer…",
+  passwordsDoNotMatch: "De to adgangskoder er ikke ens",
+  passwordChanged: "Adgangskoden er skiftet. Alle andre browsere er logget ud.",
+  passwordRulesTitle: "Krav til adgangskoden",
+  passwordRules: [
+    "Mindst 12 tegn",
+    "Store og små bogstaver",
+    "Mindst ét tal og ét specialtegn",
+    "Ikke en almindelig adgangskode og ikke brugernavnet",
+  ],
+  passwordProblem: (p) => PASSWORD_PROBLEMS_DA[p] ?? p,
+  firstRunHint:
+    "Første gang: brugernavn admin og adgangskode admin — derefter skal du straks vælge en stærk adgangskode.",
+
+  adminsTitle: "Administratorer",
+  adminsIntro:
+    "Administratorer kan tilføje flere og fjerne hinanden — også sig selv. Der skal dog altid være mindst én tilbage.",
+  addAdmin: "Tilføj administrator",
+  addAdminIntro:
+    "Vælg en midlertidig adgangskode og giv den videre personligt. Den nye administrator skal skifte den ved første login.",
+  createAdmin: "Opret",
+  temporaryPasswordLabel: "Midlertidig adgangskode",
+  temporaryPassword: "Midlertidig adgangskode",
+  active: "Aktiv",
+  you: "dig",
+  colAdmin: "Administrator",
+  colStatusAdmin: "Status",
+  colLastLogin: "Sidste login",
+  colCreated: "Oprettet",
+  removeSelf: "Fjern mig",
+  removeSelfConfirm:
+    "Fjern din egen administratorkonto? Du bliver logget ud med det samme.",
+  removeAdminConfirm: (n) => `Fjern administratoren ${n}?`,
+  lastAdminProtected: "Den sidste administrator kan ikke fjernes.",
+  adminCreated: (n) => `Administratoren ${n} er oprettet.`,
+  adminRemoved: (n) => `Administratoren ${n} er fjernet.`,
+
+  auditTitle: "Aktivitetslog",
+  auditIntro:
+    "Alt væsentligt bliver registreret: logins, invitationer, ændringer af gæster, administratorer og blokerede forsøg.",
+  auditEmpty: "Ingen hændelser endnu.",
+  auditCount: (n) => `${n} hændelser`,
+  allActions: "Alle handlinger",
+  allActors: "Alle brugere",
+  refresh: "Opdater",
+  colWhen: "Tidspunkt",
+  colAction: "Handling",
+  colWho: "Hvem",
+  colTarget: "Mål",
+  colDetail: "Detaljer",
+  colIp: "IP",
+  previous: "Forrige",
+  next: "Næste",
+  pageOf: (p, total) => `Side ${p} af ${total}`,
+  auditAction: (a) => AUDIT_LABELS_DA[a] ?? a,
 };
 
 const en: AdminDict = {
@@ -360,6 +570,76 @@ const en: AdminDict = {
   resetNow: "Reset now",
   resetting: "Resetting…",
   resetFailed: "Reset failed",
+
+  menuGuests: "Guests",
+  menuAudit: "Activity log",
+  menuAdmins: "Access",
+  menuAccount: "My account",
+  signedInAs: (n) => `Signed in as ${n}`,
+
+  changePassword: "Change password",
+  changePasswordBody: "Choose a new password for",
+  mustChangePasswordTitle: "Choose a strong password",
+  mustChangePasswordBody:
+    "This account still uses a temporary password and can do nothing else until it is changed. That applies to",
+  currentPassword: "Current password",
+  newPassword: "New password",
+  repeatPassword: "Repeat new password",
+  savePassword: "Save password",
+  saving: "Saving…",
+  passwordsDoNotMatch: "The two passwords do not match",
+  passwordChanged: "Password changed. Every other browser has been signed out.",
+  passwordRulesTitle: "Password requirements",
+  passwordRules: [
+    "At least 12 characters",
+    "Upper and lower case letters",
+    "At least one digit and one symbol",
+    "Not a common password, and not the username",
+  ],
+  passwordProblem: (p) => PASSWORD_PROBLEMS_EN[p] ?? p,
+  firstRunHint:
+    "First run: username admin, password admin — you must then set a strong password straight away.",
+
+  adminsTitle: "Administrators",
+  adminsIntro:
+    "Administrators can add others and remove each other — including themselves. There must always be at least one left.",
+  addAdmin: "Add administrator",
+  addAdminIntro:
+    "Pick a temporary password and hand it over in person. The new administrator must change it at first login.",
+  createAdmin: "Create",
+  temporaryPasswordLabel: "Temporary password",
+  temporaryPassword: "Temporary password",
+  active: "Active",
+  you: "you",
+  colAdmin: "Administrator",
+  colStatusAdmin: "Status",
+  colLastLogin: "Last login",
+  colCreated: "Created",
+  removeSelf: "Remove me",
+  removeSelfConfirm: "Remove your own administrator account? You will be signed out at once.",
+  removeAdminConfirm: (n) => `Remove the administrator ${n}?`,
+  lastAdminProtected: "The last administrator cannot be removed.",
+  adminCreated: (n) => `Administrator ${n} created.`,
+  adminRemoved: (n) => `Administrator ${n} removed.`,
+
+  auditTitle: "Activity log",
+  auditIntro:
+    "Everything that matters is recorded: logins, invitations, guest and administrator changes, and blocked attempts.",
+  auditEmpty: "No events yet.",
+  auditCount: (n) => `${n} events`,
+  allActions: "All actions",
+  allActors: "All users",
+  refresh: "Refresh",
+  colWhen: "When",
+  colAction: "Action",
+  colWho: "Who",
+  colTarget: "Target",
+  colDetail: "Details",
+  colIp: "IP",
+  previous: "Previous",
+  next: "Next",
+  pageOf: (p, total) => `Page ${p} of ${total}`,
+  auditAction: (a) => AUDIT_LABELS_EN[a] ?? a,
 };
 
 export const ADMIN_DICTS: Record<AdminLang, AdminDict> = { da, en };

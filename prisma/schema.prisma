@@ -7,6 +7,63 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/// A person who can log into the admin panel. Credentials live in the database
+/// (salted scrypt hashes), never in the environment, so passwords can be
+/// rotated and admins added or removed without a redeploy.
+model AdminUser {
+  id                 String    @id @default(uuid())
+  username           String    @unique
+  passwordHash       String
+  /// Bootstrap and admin-created accounts start with a throwaway password and
+  /// cannot do anything until they have chosen a strong one.
+  mustChangePassword Boolean   @default(true)
+  failedAttempts     Int       @default(0)
+  lockedUntil        DateTime?
+  lastLoginAt        DateTime?
+  createdByName      String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  sessions AdminSession[]
+}
+
+/// One logged-in browser. Only the SHA-256 of the cookie token is stored, so a
+/// database leak cannot be replayed as a live session.
+model AdminSession {
+  id        String    @id @default(uuid())
+  tokenHash String    @unique
+  adminId   String
+  admin     AdminUser @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  ip        String?
+  userAgent String?
+  createdAt DateTime  @default(now())
+  lastSeenAt DateTime @default(now())
+  expiresAt DateTime
+  revokedAt DateTime?
+
+  @@index([adminId])
+  @@index([expiresAt])
+}
+
+/// Append-only trail of everything that matters: logins, invitations, guest
+/// edits, admin changes and blocked requests.
+model AuditLog {
+  id         String   @id @default(uuid())
+  createdAt  DateTime @default(now())
+  action     String
+  actorName  String   @default("anonymous")
+  actorId    String?
+  targetType String?
+  targetId   String?
+  detail     String?
+  ip         String?
+  userAgent  String?
+  success    Boolean  @default(true)
+
+  @@index([createdAt])
+  @@index([action])
+}
+
 model Guest {
   id         String   @id @default(uuid())
   guestCode  String   @unique

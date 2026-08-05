@@ -1,25 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { computeScore } from "@/lib/config";
+import { RATE_RULES, rateLimit } from "@/lib/rateLimit";
+import { clientIp, readJson, safeId, safeInt } from "@/lib/security";
+
+export const dynamic = "force-dynamic";
 
 const MAX_BONES = 999;
 
 /**
  * Records a finished run. Only an improvement is stored, so replaying can never
- * lower a guest's place on the leaderboard.
+ * lower a guest's place on the leaderboard. Throttled per address so the
+ * endpoint cannot be used to hammer the database.
  */
 export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json();
-    const { guestCode, bones, blessings, finished } = body ?? {};
+  const limit = rateLimit(`score:${clientIp(req)}`, RATE_RULES.publicWrite);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "For mange forespørgsler. Prøv igen om lidt." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfter) } }
+    );
+  }
 
-    if (!guestCode || typeof guestCode !== "string") {
+  try {
+    const body = await readJson<{
+      guestCode?: unknown;
+      bones?: unknown;
+      blessings?: unknown;
+      finished?: unknown;
+    }>(req, 2048);
+    if (!body.ok) return NextResponse.json({ error: body.error }, { status: body.status });
+
+    const guestCode = safeId(body.data.guestCode);
+    if (!guestCode) {
       return NextResponse.json({ error: "guestCode is required" }, { status: 400 });
     }
 
-    const safeBones = Math.min(Math.max(Math.floor(Number(bones) || 0), 0), MAX_BONES);
-    const safeBlessings = Math.min(Math.max(Math.floor(Number(blessings) || 0), 0), 3);
-    const score = computeScore(safeBones, safeBlessings, !!finished);
+    const safeBones = safeInt(body.data.bones, 0, MAX_BONES, 0);
+    const safeBlessings = safeInt(body.data.blessings, 0, 3, 0);
+    const score = computeScore(safeBones, safeBlessings, !!body.data.finished);
 
     const existing = await prisma.guest.findUnique({ where: { guestCode } });
     if (!existing) {

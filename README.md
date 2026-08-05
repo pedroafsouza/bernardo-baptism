@@ -52,9 +52,9 @@ Built with Next.js 15 · React 19 · Phaser 3 · Prisma + SQLite · Tailwind
 
 ## Admin panel
 
-`/admin` — protected by credentials read from the environment.
+`/admin` — real accounts, stored in the database.
 
-- Guest list with group, status, adults, kids and score
+- **Guests** — guest list with group, status, adults, kids and score
 - **Invitation generator**: per guest, in **Danish, English and Portuguese**,
   in a short WhatsApp form and a long e-mail form, with copy-to-clipboard plus
   direct "open WhatsApp" / "open e-mail" links
@@ -62,6 +62,42 @@ Built with Next.js 15 · React 19 · Phaser 3 · Prisma + SQLite · Tailwind
 - Headline counters: how many have accepted, and how many people that is
   (adults + kids)
 - CSV export
+- **Activity log** — every login (successful, failed or locked out), every
+  invitation sent or opened, every guest and administrator change, every
+  database reset and every blocked or throttled request, filterable by action
+  and by user
+- **Access** — add administrators, remove them, remove yourself. The one rule
+  the server enforces is that the last administrator always stays, so the panel
+  can never be locked away from everybody
+- **My account** — change your own password
+
+### Authentication
+
+There are no credentials in the environment or in this repository.
+
+- Passwords are salted **scrypt** hashes in the database.
+- The session cookie is an opaque random token; only its SHA-256 digest is
+  stored, it is `httpOnly` + `SameSite=strict`, it expires after 12 hours and it
+  can be revoked. Changing a password signs every other browser out.
+- Five wrong passwords lock the account for 15 minutes, and the login endpoint
+  is throttled per IP *and* per account.
+- A fresh database bootstraps a single administrator — **`admin` / `admin`** —
+  which can do nothing at all except set a strong password. The panel and the
+  API both refuse every other action until it has.
+
+Password policy: at least 12 characters, upper and lower case, a digit, a
+symbol, not a common password and not the username.
+
+### Request protection
+
+`middleware.ts` sits in front of every request and applies rate limits (a global
+budget per address plus a tighter one for `/api`), screens the path and query
+string for SQL-injection, script and traversal markers, blocks the usual scanner
+paths, and sets CSP, `X-Frame-Options`, `nosniff`, referrer and permissions
+headers. Each route additionally caps its request body (16 KB), rejects payloads
+carrying injection markers or prototype-pollution keys, and validates every
+field before it reaches Prisma — which parameterises the queries themselves.
+Guest-facing writes (RSVP, score) are throttled per address as well.
 
 ---
 
@@ -69,35 +105,24 @@ Built with Next.js 15 · React 19 · Phaser 3 · Prisma + SQLite · Tailwind
 
 ```bash
 npm install
-cp .env.example .env      # then fill in the values (see below)
+cp .env.example .env      # DATABASE_URL only
 npm run db:push           # create the SQLite schema
-npm run seed              # load the guest list
+npm run seed              # load the guest list and the first admin
 npm run dev
 ```
 
 Open <http://localhost:3000> for the invitation and
-<http://localhost:3000/admin> for the panel.
+<http://localhost:3000/admin> for the panel. Log in with `admin` / `admin` and
+set a strong password when prompted.
 
 ### Environment variables
 
-No credentials are committed to this repository. `.env` is gitignored and the
-app **fails closed** — admin login returns 503 while these are unset.
+`.env` is gitignored, and there is only one variable left — the admin
+credentials moved into the database where they can be rotated and revoked.
 
-| Variable         | Purpose                                             |
-| ---------------- | --------------------------------------------------- |
-| `DATABASE_URL`   | Prisma connection string, e.g. `file:./dev.db`       |
-| `ADMIN_USER`     | Admin panel username                                 |
-| `ADMIN_PASSWORD` | Admin panel password                                 |
-| `ADMIN_SECRET`   | Random string signed into the admin session cookie   |
-
-Locally they live in `.env`. In CI/deployment set them as repository secrets or
-hosting environment variables:
-
-```bash
-gh secret set ADMIN_USER
-gh secret set ADMIN_PASSWORD
-gh secret set ADMIN_SECRET
-```
+| Variable       | Purpose                                       |
+| -------------- | --------------------------------------------- |
+| `DATABASE_URL` | Prisma connection string, e.g. `file:./dev.db` |
 
 ---
 
@@ -152,6 +177,9 @@ separate blast radii. Each one requires typing `RESET` to confirm.
 | **Nulstil svar**         | RSVPs + all game progress           | guest list, invitation-sent flags         |
 | **Nulstil hele databasen** | everything                        | nothing — rebuilds the list from `prisma/guests.ts` |
 
+None of them touch the administrator accounts or the activity log, and every
+reset is recorded in the log with the name of whoever ran it.
+
 ## Scripts
 
 | Command          | What it does                              |
@@ -160,7 +188,7 @@ separate blast radii. Each one requires typing `RESET` to confirm.
 | `npm run build`  | `prisma generate` + production build      |
 | `npm run start`  | Serve the production build                |
 | `npm run db:push`| Sync the Prisma schema to SQLite          |
-| `npm run seed`   | Upsert the guest list (never overwrites answers) |
+| `npm run seed`   | Upsert the guest list (never overwrites answers) and create the first admin |
 
 ---
 
@@ -170,8 +198,9 @@ separate blast radii. Each one requires typing `RESET` to confirm.
 app/                 Next.js routes — invitation, /admin, /api/*
 components/          React UI (intro, RSVP, leaderboard, icons)
 components/game/     Phaser scene factory and procedural textures
-components/admin/    Admin-only UI (invitation message modal)
-lib/                 config, i18n, invite templates, music, game constants
+components/admin/    Admin-only UI (invitations, danger zone, access, activity log)
+lib/                 config, i18n, invite templates, auth, audit, rate limiting
+middleware.ts        Rate limiting, injection screening and security headers
 lib/levels/          level data
 prisma/              schema, seed script and the real guest list
 public/assets/game/  pixel art (CC0 — see CREDITS.md)
