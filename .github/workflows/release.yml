@@ -52,6 +52,8 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
+      - uses: actions/checkout@v4
+
       - name: Load SSH deploy key
         run: |
           install -d -m 700 ~/.ssh
@@ -68,8 +70,11 @@ jobs:
           REF: ${{ github.sha }}
           SEED_MODE: ${{ inputs.seed_mode || 'if-missing' }}
         run: |
+          # Pipe the script from this checkout rather than running the copy on
+          # the server: the deploy logic then always matches the commit being
+          # deployed, and a first deploy works before the server has the file.
           ssh -o BatchMode=yes "$USER@$HOST" \
-            "SEED_MODE='$SEED_MODE' DEPLOY_REF='$REF' bash /srv/baptism/scripts/deploy.sh"
+            "SEED_MODE='$SEED_MODE' DEPLOY_REF='$REF' bash -s" < scripts/deploy.sh
 
       - name: Verify the public site
         env:
