@@ -127,6 +127,10 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
             frameWidth: 64,
             frameHeight: 52,
           });
+          this.load.spritesheet("flags", "/assets/game/flags.png", {
+            frameWidth: 83,
+            frameHeight: 202,
+          });
           this.load.image("church_pixel", "/assets/game/church_pixel.png");
           this.load.image("hospital", "/assets/game/hospital.png");
         }
@@ -472,20 +476,16 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
           // story signboards
           lvl.signs.forEach((s) => this.addSign(s.tile, s.label, s.bg, s.fg));
 
-          // Danish flags on poles planted firmly in the ground
-          lvl.flags.forEach((tx) => {
-            const px = tx * T + T / 2;
-            // pole runs from just above the flag down into the grass
+          // Bernardo's four flags, cycled along the road in the order they tell
+          // his story: Denmark, Brazil, Pernambuco, and the Straw Hats last.
+          // They fly in front of the scenery (depth 3) so no building can ever
+          // swallow a pole, and the poles are planted right in the grass.
+          lvl.flags.forEach((tx, i) => {
             this.add
-              .rectangle(px, 8 * T + 6, 5, 8 * T + 6 - 232, 0x8a5a2b)
-              .setOrigin(0.5, 1)
-              .setDepth(-2);
-            this.add.circle(px, 234, 3.5, 0xffd34d).setDepth(-2); // finial
-            this.add
-              .image(px + 3, 250, "flagDK")
-              .setOrigin(0, 0.5)
-              .setDepth(-2)
-              .setScale(0.95);
+              .image(tx * T + T / 2, 8 * T + 6, "flags", i % 4)
+              // the pole sits 8px from the left of every frame
+              .setOrigin(8 / 83, 1)
+              .setDepth(3);
           });
 
           // Hvidovre Hospital — a Danish pixel-art building standing near the

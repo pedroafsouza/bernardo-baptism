@@ -80,7 +80,7 @@ export type Level = {
   trees: number[]; // foreground tree tile columns
   flowers: number[]; // flower tile columns (tint randomised per instance)
   signs: SignDef[];
-  flags: number[]; // Dannebrog pole tile columns
+  flags: number[]; // flag pole tile columns (DK → BR → PE → Straw Hat, cycled)
 
   // landmarks
   heavenGateTile: number; // start-of-level halo/cloud

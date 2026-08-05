@@ -117,7 +117,12 @@ export const level01: Level = {
     { tile: 117, label: "KIRKE\n→", bg: 0xffffff, fg: 0xc8102e },
   ],
 
-  flags: [7, 20, 37, 54, 72, 90, 108, 125],
+  // Flag poles, cycling Denmark → Brazil → Pernambuco → Straw Hat. The columns
+  // are kept clear of the hospital (tiles ~4-9) and the church (tiles ~125-132)
+  // so no pole is ever hidden behind a building.
+  // Columns chosen so no pole or banner lands on a building, platform, "?"
+  // block, cross, tree, sign, bounce pad or football.
+  flags: [16, 33, 40, 59, 77, 87, 105, 113],
 
   heavenGateTile: 2,
 

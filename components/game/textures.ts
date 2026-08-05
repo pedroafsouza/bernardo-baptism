@@ -207,15 +207,6 @@ export function generateTextures(scene: any, Phaser: any) {
   g.fillTriangle(24, 10, 12, 2, 12, 8);
   g.generateTexture("bird", 24, 12);
 
-  // Danish flag (Dannebrog) — Bernardo was born in Denmark
-  g.clear();
-  g.fillStyle(0xc8102e, 1);
-  g.fillRect(0, 0, 48, 32);
-  g.fillStyle(0xffffff, 1);
-  g.fillRect(14, 0, 6, 32);
-  g.fillRect(0, 13, 48, 6);
-  g.generateTexture("flagDK", 48, 32);
-
   // World Cup football — classic black-and-white soccer ball (Telstar)
   g.clear();
   const pent = (cx: number, cy: number, r: number, rot: number) => {
