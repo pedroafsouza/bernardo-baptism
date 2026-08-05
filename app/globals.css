@@ -1,0 +1,75 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --pastel-cream: #fdf6ec;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--pastel-cream);
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: "Press Start 2P", monospace;
+}
+
+/* crisp pixel rendering for the canvas */
+canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* No text selection anywhere in the game UI — long-pressing or dragging on
+   mobile must never pop up the selection handles / copy menu. Real inputs keep
+   normal selection so the admin panel stays usable. */
+*,
+*::before,
+*::after {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+input,
+textarea,
+select,
+[contenteditable="true"] {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
+.pixel-border {
+  box-shadow:
+    0 0 0 4px #000,
+    0 0 0 8px #fff,
+    0 8px 0 8px rgba(0, 0, 0, 0.15);
+}
+
+.pixel-btn {
+  transition: transform 0.05s ease;
+}
+.pixel-btn:active {
+  transform: translateY(2px);
+}
+
+/* prevent scroll bounce on mobile game */
+.game-root {
+  height: 100dvh;
+  width: 100vw;
+  overflow: hidden;
+  touch-action: none;
+}
