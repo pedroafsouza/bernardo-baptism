@@ -1,8 +1,10 @@
 "use client";
 
 import { OscarSays } from "@/components/Oscar";
+import { BernardoSays } from "@/components/Bernardo";
 import Icon from "@/components/Icon";
 import { LANGS, LANG_LABEL, type Lang, DICTS } from "@/lib/i18n";
+import { guestGreetingList } from "@/lib/names";
 
 type Props = {
   name: string;
@@ -20,6 +22,9 @@ export default function IntroOverlay({
   onSkip,
 }: Props) {
   const t = DICTS[lang];
+  // "Marie and Kevin" is one invitation but two people: Bernardo greets each of
+  // them by name, in the language the invitation was opened in.
+  const guests = guestGreetingList(name, lang);
 
   return (
     <div className="absolute inset-0 z-40 flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm">
@@ -51,6 +56,17 @@ export default function IntroOverlay({
           {t.welcome(name)}
         </p>
 
+        {/* Bernardo speaks first and hands over to Oscar. */}
+        <div className="mb-3">
+          <BernardoSays>
+            {t.bernardoIntro.hi}
+            <b>{t.bernardoIntro.name}</b>
+            {t.bernardoIntro.welcome(guests)}
+            {t.bernardoIntro.church}
+            {t.bernardoIntro.feed}
+          </BernardoSays>
+        </div>
+
         <div className="mb-4">
           <OscarSays>
             {t.oscarIntro.p1}
@@ -64,6 +80,7 @@ export default function IntroOverlay({
               {t.oscarIntro.treats} <Icon name="bone" />
             </b>
             {t.oscarIntro.p4}
+            {t.oscarIntro.daily}
           </OscarSays>
         </div>
 

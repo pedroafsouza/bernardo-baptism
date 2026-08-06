@@ -5,6 +5,7 @@ import { EVENT } from "@/lib/config";
 import { OscarSays } from "@/components/Oscar";
 import Icon from "@/components/Icon";
 import Leaderboard from "@/components/Leaderboard";
+import BoneRace from "@/components/BoneRace";
 import { DICTS, type Lang } from "@/lib/i18n";
 
 type Guest = {
@@ -176,6 +177,14 @@ export default function RsvpModal({
 
             <div className="mb-4">
               <Leaderboard
+                lang={lang}
+                highlightCode={guest?.guestCode}
+                refreshKey={leaderboardKey}
+              />
+            </div>
+
+            <div className="mb-4">
+              <BoneRace
                 lang={lang}
                 highlightCode={guest?.guestCode}
                 refreshKey={leaderboardKey}

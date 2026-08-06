@@ -18,10 +18,20 @@ export type RateRule = { limit: number; windowMs: number };
 export const RATE_RULES = {
   /** Any request reaching the app. */
   global: { limit: 600, windowMs: 60_000 },
-  /** Anything under /api. */
-  api: { limit: 180, windowMs: 60_000 },
+  /**
+   * Anything under /api. Raised when bones started being handed in during play:
+   * a run flushes at most twice a second, and a household on several devices
+   * shares one address, so the old budget could have throttled honest players.
+   */
+  api: { limit: 300, windowMs: 60_000 },
   /** Guest-facing writes (RSVP, score). */
   publicWrite: { limit: 30, windowMs: 60_000 },
+  /**
+   * Bones handed in. The game flushes at most twice a second while a run is in
+   * progress, so this leaves plenty of headroom for a household playing on
+   * several devices behind one address without ever becoming a useful flood.
+   */
+  bones: { limit: 240, windowMs: 60_000 },
   /** Password guessing, per IP. */
   login: { limit: 8, windowMs: 15 * 60_000 },
   /** Password guessing, per account. */

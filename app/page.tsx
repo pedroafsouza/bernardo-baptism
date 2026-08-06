@@ -9,6 +9,8 @@ import Icon from "@/components/Icon";
 import { useLang } from "@/lib/i18n";
 import { computeScore } from "@/lib/config";
 import { DEMO_CODE, demoGuest, isDemoCode } from "@/lib/demo";
+import { boneDay } from "@/lib/dailyBones";
+import { createBoneReporter, type BoneReporter } from "@/lib/boneReporter";
 
 const PhaserGame = dynamic(() => import("@/components/PhaserGame"), {
   ssr: false,
@@ -39,9 +41,27 @@ function InvitationInner() {
   const [showIntro, setShowIntro] = useState(true);
   const [run, setRun] = useState<RunResult | null>(null);
   const [leaderboardKey, setLeaderboardKey] = useState(0);
+  // Which day's bones are on the ground. Fixed for the lifetime of the page, so
+  // a run that straddles midnight still hands its bones in to the day it was
+  // actually playing.
+  const [day] = useState(() => boneDay());
 
   // Live progress mirrored out of the game so the run can be scored on arrival.
   const progress = useRef({ blessings: 0, bones: 0 });
+
+  // Bones are queued here and flushed on a 500 ms tick — one request for a
+  // handful of treats instead of one request per treat.
+  const reporter = useRef<BoneReporter | null>(null);
+
+  useEffect(() => {
+    if (!code) return;
+    const instance = createBoneReporter({ guestCode: code, day });
+    reporter.current = instance;
+    return () => {
+      instance.stop();
+      reporter.current = null;
+    };
+  }, [code, day]);
 
   useEffect(() => {
     let active = true;
@@ -82,6 +102,9 @@ function InvitationInner() {
       // Show the local result immediately; the server decides the stored best.
       setRun({ bones, blessings, finished, score, isBest: false });
       if (!code || score <= 0) return;
+      // The bone race is shown right next to the score, so the queue is emptied
+      // before the standings are refreshed.
+      await reporter.current?.flush();
       try {
         const res = await fetch("/api/score", {
           method: "POST",
@@ -165,7 +188,9 @@ function InvitationInner() {
       <PhaserGame
         key={lang}
         lang={lang}
+        day={day}
         onEnterChurch={() => openRsvp(true)}
+        onBoneCollected={(boneIndex) => reporter.current?.collect(boneIndex)}
         onProgress={(p) => {
           progress.current = p;
         }}

@@ -9,8 +9,34 @@ const prisma = new PrismaClient();
  * A database with no administrator is a locked door with no key, so the seed
  * plants the documented first-run account. It carries a temporary password and
  * can do nothing until a strong one replaces it at first login.
+ *
+ * `RESET_ADMIN=1` goes further and puts the panel back to its documented
+ * first-run state: every existing administrator and every live session is
+ * removed and a single `admin` / `admin` account is planted. That is the whole
+ * point of the reset pipeline — nobody should have to remember which password
+ * the last test run happened to set.
  */
 async function seedAdmin() {
+  const reset = process.env.RESET_ADMIN === "1" || process.env.RESET_ADMIN === "true";
+
+  if (reset) {
+    // Sessions are cascaded away with their owner, so no browser survives this.
+    const { count } = await prisma.adminUser.deleteMany({});
+    await prisma.adminUser.create({
+      data: {
+        username: "admin",
+        passwordHash: await hashPassword("admin"),
+        mustChangePassword: true,
+        createdByName: "reset",
+      },
+    });
+    console.log(
+      `Administrators reset: ${count} removed, admin / admin recreated ` +
+        "(must be changed at login)."
+    );
+    return;
+  }
+
   const existing = await prisma.adminUser.count();
   if (existing > 0) {
     console.log(`${existing} administrator(s) already present — untouched.`);

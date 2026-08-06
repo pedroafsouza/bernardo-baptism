@@ -30,16 +30,22 @@ Built with Next.js 15 · React 19 · Phaser 3 · Prisma + SQLite · Tailwind
 
 ```
 /?code=MARVIN  →  entrance screen (Dansk / English)
-               →  platformer: run, hop, collect bones, bounce, kick the ball
+               →  Bernardo greets every person on the invitation by name
+               →  platformer: run, hop, collect the day's bones, bounce, kick the ball
                →  reach the church
-               →  RSVP + score submitted to the leaderboard
+               →  RSVP + score + bone race submitted
 ```
 
 - **Personal invite codes.** Each code is a playful portmanteau of the invitees'
   own names — `BIBEDRO` (Bibi + Pedro), `MARVIN` (Marie + Kevin), `THADRA`
   (Thales + Sandra). Solo guests get Bernardo's own `-ARDO` ending.
+- **Bernardo says hello.** The invitation line is one household — "Marie and
+  Kevin", "Carlos, Dinha, Sonia & Morges" — so it is taken apart again and
+  Bernardo welcomes each person by name, in the language the link was opened in.
+  Then Oscar takes over and explains the bones.
 - **Leaderboard.** 10 points per bone, 100 per blessing, 250 for reaching the
   church. Best run per guest wins.
+- **A new set of bones every day.** See [Daily bones](#daily-bones) below.
 - **Oscar grows.** The more bones you collect, the bigger Oscar gets — from
   scale 1.2 up to 2.1 at 40 bones.
 - **Two languages.** Danish by default, English opt-in, stored in localStorage.
@@ -47,6 +53,48 @@ Built with Next.js 15 · React 19 · Phaser 3 · Prisma + SQLite · Tailwind
 
 <img src="public/assets/game/hospital.png" width="160" alt="Level scenery" />
 <img src="public/assets/game/tiles.png" width="320" alt="Tileset" />
+
+---
+
+## Daily bones
+
+Oscar has to be fed *every day*, so the treats are no longer part of the level:
+a fresh set of 42 is laid out each morning, somewhere else every time.
+
+**How the layout is decided.** `lib/dailyBones.ts` derives the positions from the
+date alone — a seeded shuffle over the tiles the generator has proved are free
+(open ground and the tops of static platforms; never a moving raft, a "?" block,
+a blessing, a pit, a tree, a flag, a springboard, a football or a building). The
+day rolls over at midnight in `Europe/Copenhagen`.
+
+Because it is derived and not stored:
+
+- every guest playing on the same day sees exactly the same bones in the same
+  order, so the competition is fair;
+- the **server regenerates the same layout** and checks every reported bone
+  against it, so a pickup is verified rather than trusted.
+
+**How they are handed in.** The game reports *which* bone was picked up, not how
+many. Pickups are queued and flushed on a **500 ms tick, and only when there is
+something to send** — a good run is a handful of requests, an idle game makes
+none at all. A failed flush puts its bones back in the queue, and the tab going
+away flushes what is left.
+
+Handing the same bone in twice changes nothing: `BoneCollection` is unique on
+(guest, day, bone), so a retry, a reload or two overlapping flushes are all
+absorbed silently. That is what makes a best-effort client safe.
+
+**The competition.** `/api/bones/leaderboard` returns two standings from the same
+rows — today's race and the running total — and both are shown next to the score
+in the RSVP screen. Bones popped out of a "?" block are bonus treats that belong
+to no day: they count towards the score and towards feeding Oscar, but not
+towards the race.
+
+| Endpoint                  |                                                          |
+| ------------------------- | -------------------------------------------------------- |
+| `GET /api/bones`          | The day currently open and how many bones it holds        |
+| `POST /api/bones`         | Hand in a batch: `{ guestCode, day, bones: number[] }`    |
+| `GET /api/bones/leaderboard` | Today's race and the all-time race                    |
 
 ---
 
@@ -179,8 +227,37 @@ separate blast radii. Each one requires typing `RESET` to confirm.
 | **Nulstil svar**         | RSVPs + all game progress           | guest list, invitation-sent flags         |
 | **Nulstil hele databasen** | everything                        | nothing — rebuilds the list from `prisma/guests.ts` |
 
-None of them touch the administrator accounts or the activity log, and every
-reset is recorded in the log with the name of whoever ran it.
+The first two also clear the bone race, because a standing with no rows behind
+it is a lie. None of them touch the administrator accounts or the activity log,
+and every reset is recorded in the log with the name of whoever ran it.
+
+### Resetting production, including the admin password
+
+The panel cannot reset itself: it can clear answers, but not the password of the
+administrator who is logged in to clear them. That is what the **"Reset
+production database"** workflow is for
+(`.github/workflows/reset.yml` → `scripts/reset-prod.sh`).
+
+Run it from the Actions tab and type `RESET` into the confirmation box. It:
+
+1. **Rehearses first** on a throwaway database in CI — schema, guest list,
+   verification. A broken guest list fails there, not halfway through replacing
+   the real one.
+2. **Backs the live database up** on the server (WAL-safe) into
+   `backups/pre-reset-*.db`, so the old data stays recoverable.
+3. **Builds a clean snapshot** in a temporary file: schema, the full guest list
+   from `prisma/guests.ts`, and the documented first-run administrator —
+   `RESET_ADMIN=1` removes every existing admin and every live session and
+   plants `admin` / `admin`, which the panel forces to be changed at login.
+4. **Verifies the snapshot** with `npm run db:verify` *before* it goes anywhere
+   near production: every guest on the list registered, every invitation with
+   the right capacity, an administrator present.
+5. Only then stops the service, **swaps the snapshot in**, restarts and
+   health-checks the site.
+
+The swap is the last destructive step, so a failure at any earlier point leaves
+production exactly as it was. It shares the `release-production` concurrency
+group, so a reset can never race a deploy.
 
 ## Scripts
 
@@ -192,7 +269,8 @@ reset is recorded in the log with the name of whoever ran it.
 | `npm run db:push`| Sync the Prisma schema to SQLite          |
 | `npm run seed`   | Upsert the guest list (never overwrites answers) and create the first admin |
 | `npm run db:backfill` | Fill in invitation capacity for rows that predate it (idempotent) |
-| `npm test`       | Unit tests for the password policy and the invitation capacity rules |
+| `npm run db:verify` | Check a database is fit to be production: every guest registered with the right capacity, and an administrator present |
+| `npm test`       | Unit tests for the password policy, the invitation capacity rules, the daily bone layout and the name splitting |
 
 ---
 
@@ -212,9 +290,10 @@ can never inflate the final numbers.
 ## Continuous integration
 
 `.github/workflows/ci.yml` runs on every branch and pull request: typecheck,
-unit tests, production build, and a schema-plus-seed dry run against an empty
-database. The release workflow runs the same gates before it is allowed to
-deploy.
+unit tests, production build, and a schema-plus-seed-plus-verify dry run against
+an empty database. The release workflow runs the same gates before it is allowed
+to deploy, and the reset workflow rehearses the whole reset before touching the
+server.
 
 ---
 
@@ -222,13 +301,16 @@ deploy.
 
 ```
 app/                 Next.js routes — invitation, /admin, /api/*
-components/          React UI (intro, RSVP, leaderboard, icons)
+components/          React UI (intro, RSVP, leaderboard, bone race, icons)
 components/game/     Phaser scene factory and procedural textures
 components/admin/    Admin-only UI (invitations, danger zone, access, activity log)
 lib/                 config, i18n, invite templates, auth, audit, rate limiting
+lib/dailyBones.ts    the day's bone layout, derived from the date
+lib/boneReporter.ts  the 500 ms throttled queue that hands bones in
+lib/names.ts         splitting a household line into the people in it
 middleware.ts        Rate limiting, injection screening and security headers
 lib/levels/          level data
-prisma/              schema, seed script and the real guest list
+prisma/              schema, seed, verification and the real guest list
 public/assets/game/  pixel art (CC0 — see CREDITS.md)
 ```
 

@@ -10,6 +10,10 @@ import { getMusic, readMuted, writeMuted } from "@/lib/music";
 type Props = {
   onEnterChurch: () => void;
   onProgress?: (p: { blessings: number; bones: number }) => void;
+  /** Index of a daily bone the moment it is picked up. */
+  onBoneCollected?: (boneIndex: number) => void;
+  /** The day whose bone layout to build, `YYYY-MM-DD`. */
+  day?: string;
   lang: Lang;
   disabled?: boolean;
 };
@@ -17,6 +21,8 @@ type Props = {
 export default function PhaserGame({
   onEnterChurch,
   onProgress,
+  onBoneCollected,
+  day,
   lang,
   disabled,
 }: Props) {
@@ -35,6 +41,11 @@ export default function PhaserGame({
 
   const onProgressRef = useRef(onProgress);
   onProgressRef.current = onProgress;
+
+  // The scene is built once, so the callback reaches it through a ref that the
+  // React tree is free to replace on every render.
+  const onBoneRef = useRef<(boneIndex: number) => void>(() => {});
+  onBoneRef.current = onBoneCollected ?? (() => {});
 
   useEffect(() => {
     onProgressRef.current?.({ blessings, bones: coins });
@@ -101,6 +112,8 @@ export default function PhaserGame({
         setCoins,
         setReady,
         onEnterRef,
+        onBoneRef,
+        day,
         lang,
       });
 

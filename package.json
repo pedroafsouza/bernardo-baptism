@@ -11,6 +11,7 @@
     "postinstall": "prisma generate",
     "seed": "tsx --env-file-if-exists=.env prisma/seed.ts",
     "db:backfill": "tsx --env-file-if-exists=.env prisma/backfill.ts",
+    "db:verify": "tsx --env-file-if-exists=.env prisma/verify.ts",
     "test": "tsx --test tests/*.test.ts",
     "db:push": "prisma db push"
   },

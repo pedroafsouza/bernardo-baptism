@@ -19,6 +19,7 @@ import {
 } from "@/lib/gameConstants";
 import { generateTextures } from "@/components/game/textures";
 import { LEVELS, DEFAULT_LEVEL_ID } from "@/lib/levels/level01";
+import { boneDay, dailyBones } from "@/lib/dailyBones";
 import type { Level } from "@/lib/levels/types";
 import type { Lang } from "@/lib/i18n";
 
@@ -30,6 +31,17 @@ export type SceneDeps = {
   onEnterRef: { current: () => void };
   levelId?: string;
   lang?: Lang;
+  /**
+   * The day whose bone layout to build, `YYYY-MM-DD`. Passed in rather than
+   * read here so the scene and the reporter can never disagree about which
+   * day's bones are on screen.
+   */
+  day?: string;
+  /**
+   * Called with the index of every daily bone picked up. Bones popped out of a
+   * "?" block are bonus treats that belong to no day and are not reported.
+   */
+  onBoneRef?: { current: (boneIndex: number) => void };
 };
 
 // The pixel-game look without the eye strain: Pixelify Sans has real lowercase
@@ -64,6 +76,10 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
   const { control, setBlessings, setCoins, setReady, onEnterRef } = deps;
   const TXT = SCENE_TEXT[deps.lang && SCENE_TEXT[deps.lang] ? deps.lang : "da"];
   const level: Level = LEVELS[deps.levelId ?? DEFAULT_LEVEL_ID] ?? LEVELS[DEFAULT_LEVEL_ID];
+  // Oscar is fed every day, so today's treats are laid out fresh rather than
+  // baked into the level. Same date, same layout, for everybody.
+  const day = deps.day ?? boneDay();
+  const todaysBones = dailyBones(day, level.id);
 
   return class MainScene extends Phaser.Scene {
         player!: any;
@@ -214,10 +230,11 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
           });
         }
 
-        addCoin(tx: number, ty: number) {
+        addCoin(tx: number, ty: number, boneIndex = -1) {
           const c = this.coinGroup.create(tx * T + T / 2, ty * T + T / 2, "treat");
           c.setDepth(1);
           c.setScale(0.9);
+          c.setData("boneIndex", boneIndex);
           c.body.setAllowGravity(false);
           this.tweens.add({
             targets: c,
@@ -525,9 +542,14 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
           // springboards that launch Bernardo skyward
           (lvl.bouncePads ?? []).forEach((tx) => this.addBouncePad(tx));
 
-          // blessings (3 golden crosses) + bones along the journey
+          // blessings (3 golden crosses) + today's bones along the journey.
+          // `lvl.bones` is only a fallback: it is the hand-authored layout, kept
+          // so a level with no valid daily candidates still has treats in it.
           lvl.crosses.forEach(([x, y]) => this.addCross(x, y));
-          lvl.bones.forEach(([x, y]) => this.addCoin(x, y));
+          const bones = todaysBones.length > 0 ? todaysBones : lvl.bones;
+          bones.forEach(([x, y], i) =>
+            this.addCoin(x, y, todaysBones.length > 0 ? i : -1)
+          );
 
           // bouncy World Cup footballs the bear can kick around
           // Arcade Physics separates circle bodies against static rectangles very
@@ -862,9 +884,15 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
           });
 
           this.physics.add.overlap(this.player, this.coinGroup, (_p: any, coin: any) => {
+            const boneIndex = coin.getData("boneIndex");
             this.collectFx(coin.x, coin.y, 0xf3e9c9, 6);
             coin.destroy();
             this.gainBone();
+            // Queued, not sent: the reporter batches pickups and flushes them
+            // on its own tick, so a greedy run is still one request.
+            if (typeof boneIndex === "number" && boneIndex >= 0) {
+              deps.onBoneRef?.current(boneIndex);
+            }
           });
 
           // ---- input ----

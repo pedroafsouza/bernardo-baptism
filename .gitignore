@@ -5,7 +5,9 @@ build
 *.log
 .DS_Store
 .env
-prisma/dev.db
-prisma/dev.db-journal
+prisma/*.db
+prisma/*.db-journal
+prisma/*.db-wal
+prisma/*.db-shm
 next-env.d.ts
 tsconfig.tsbuildinfo

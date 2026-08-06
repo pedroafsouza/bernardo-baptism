@@ -42,10 +42,12 @@ jobs:
 
       - name: Schema and seed sanity check
         # Proves the migration, the capacity backfill and the guest list all
-        # apply cleanly to an empty database before any of it reaches the server.
+        # apply cleanly to an empty database before any of it reaches the
+        # server — and that the result is one the reset pipeline would accept.
         env:
           DATABASE_URL: "file:./ci.db"
         run: |
           pnpm exec prisma db push --skip-generate
           pnpm run seed
           pnpm run db:backfill
+          pnpm run db:verify

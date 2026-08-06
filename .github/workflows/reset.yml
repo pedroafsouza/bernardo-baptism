@@ -1,0 +1,111 @@
+name: Reset production database
+
+# Deliberately manual, and deliberately awkward.
+#
+# The release workflow is built so a deploy can never destroy real RSVPs. This
+# one exists for the opposite case: putting the site back to a clean, freshly
+# planted state — every guest re-registered from prisma/guests.ts, no answers,
+# no scores, no bones, and the admin password back to the documented
+# `admin` / `admin`, which the panel then forces to be changed at first login.
+#
+# It only ever runs from "Run workflow", and only when RESET is typed in.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type RESET to confirm — this deletes every RSVP'
+        required: true
+        default: ""
+        type: string
+
+concurrency:
+  # Shares the release group: a reset must never race a deploy.
+  group: release-production
+  cancel-in-progress: false
+
+jobs:
+  guard:
+    name: Confirm
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the confirmation
+        run: |
+          if [ "${{ inputs.confirm }}" != "RESET" ]; then
+            echo "::error::Type RESET (exactly) to confirm the reset."
+            exit 1
+          fi
+          echo "Confirmed."
+
+  rehearse:
+    name: Rehearse the reset on an empty database
+    needs: guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # The exact sequence the server is about to run. If the guest list or the
+      # schema is broken, it breaks here — on a throwaway database — instead of
+      # halfway through replacing the real one.
+      - name: Build and verify a clean database
+        env:
+          DATABASE_URL: "file:./reset-rehearsal.db"
+          RESET_ADMIN: "1"
+        run: |
+          pnpm exec prisma db push --skip-generate --force-reset
+          pnpm run seed
+          pnpm run db:verify
+
+  reset:
+    name: Reset production
+    needs: rehearse
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Load SSH deploy key
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          # Pin the host key so the reset cannot be aimed at another box.
+          printf '%s\n' "${{ secrets.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Run the reset
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          # Piped from this checkout, like the deploy, so the logic that runs is
+          # the logic in this commit.
+          ssh -o BatchMode=yes "$USER@$HOST" \
+            "CONFIRM='RESET' bash -s" < scripts/reset-prod.sh
+
+      - name: Verify the public site
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          ssh -o BatchMode=yes "$USER@$HOST" \
+            'curl -fsS -o /dev/null -w "app: %{http_code}\n" http://127.0.0.1:3000/'
+
+      - name: Summary
+        run: |
+          {
+            echo "### Production reset complete"
+            echo
+            echo "* Guest list re-planted from \`prisma/guests.ts\` and verified."
+            echo "* Every RSVP, score and collected bone cleared."
+            echo "* Administrator back to \`admin\` / \`admin\` — change it at first login."
+            echo "* The previous database is kept on the server under \`backups/pre-reset-*.db\`."
+          } >> "$GITHUB_STEP_SUMMARY"

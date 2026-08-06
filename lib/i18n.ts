@@ -16,6 +16,14 @@ export const LANG_LABEL: Record<Lang, string> = {
 type Dict = {
   title: string;
   welcome: (name: string) => string;
+  /** Bernardo opens the invitation and greets every guest in the household by name. */
+  bernardoIntro: {
+    hi: string;
+    name: string;
+    welcome: (guests: string) => string;
+    church: string;
+    feed: string;
+  };
   oscarIntro: {
     p1: string;
     name: string;
@@ -24,6 +32,8 @@ type Dict = {
     p3: string;
     treats: string;
     p4: string;
+    /** Oscar's closing line: a fresh set of bones is laid out every day. */
+    daily: string;
   };
   howToPlay: string;
   howMove: string;
@@ -88,11 +98,26 @@ type Dict = {
   rank: string;
   player: string;
   newRecord: string;
+
+  /** The daily bone-collecting competition. */
+  boneRace: string;
+  boneRaceEmpty: string;
+  boneRaceToday: string;
+  boneRaceAllTime: string;
+  bonesToday: (n: number) => string;
+  bonesTotal: (n: number) => string;
 };
 
 const da: Dict = {
   title: "Bernardos barnedåb",
   welcome: (n) => `Velkommen, ${n}!`,
+  bernardoIntro: {
+    hi: "Hej! Jeg hedder ",
+    name: "Bernardo",
+    welcome: (g) => `. Velkommen, ${g}!`,
+    church: " Jeg har brug for jeres hjælp til at finde kirken.",
+    feed: " Og jeg skal fodre Oscar med ben hver eneste dag!",
+  },
   oscarIntro: {
     p1: "Vov! Jeg er ",
     name: "Oscar",
@@ -101,6 +126,7 @@ const da: Dict = {
     p3: ", så kirken åbner. Snup ",
     treats: "godbidderne",
     p4: " på vejen — de er selvfølgelig til mig!",
+    daily: " Hver dag lægger jeg nye ben ud på nye steder, så kom tilbage i morgen — den, der samler flest ben, vinder!",
   },
   howToPlay: "Sådan spiller du",
   howMove: "Bevæg dig: Piletaster / A · D",
@@ -169,11 +195,25 @@ const da: Dict = {
   rank: "#",
   player: "Spiller",
   newRecord: "Ny personlig rekord!",
+
+  boneRace: "Benkonkurrencen",
+  boneRaceEmpty: "Ingen har samlet ben endnu — bliv den første!",
+  boneRaceToday: "I dag",
+  boneRaceAllTime: "I alt",
+  bonesToday: (n) => `${n} ben i dag`,
+  bonesTotal: (n) => `${n} ben i alt`,
 };
 
 const en: Dict = {
   title: "Bernardo's Baptism",
   welcome: (n) => `Welcome, ${n}!`,
+  bernardoIntro: {
+    hi: "Hi! My name is ",
+    name: "Bernardo",
+    welcome: (g) => `. Welcome ${g}!`,
+    church: " I need your help to find the church.",
+    feed: " I also need to feed Oscar every day with bones!",
+  },
   oscarIntro: {
     p1: "Woof! I'm ",
     name: "Oscar",
@@ -182,6 +222,7 @@ const en: Dict = {
     p3: " so the church opens. Grab ",
     treats: "the treats",
     p4: " along the way — they're for me, of course!",
+    daily: " Every day I hide new bones in new places, so come back tomorrow — whoever collects the most bones wins!",
   },
   howToPlay: "How to play",
   howMove: "Move: Arrow keys / A · D",
@@ -250,11 +291,25 @@ const en: Dict = {
   rank: "#",
   player: "Player",
   newRecord: "New personal best!",
+
+  boneRace: "Bone race",
+  boneRaceEmpty: "Nobody has collected a bone yet — be the first!",
+  boneRaceToday: "Today",
+  boneRaceAllTime: "All time",
+  bonesToday: (n) => `${n} bones today`,
+  bonesTotal: (n) => `${n} bones in total`,
 };
 
 const pt: Dict = {
   title: "Batizado do Bernardo",
   welcome: (n) => `Bem-vindo, ${n}!`,
+  bernardoIntro: {
+    hi: "Oi! Meu nome é ",
+    name: "Bernardo",
+    welcome: (g) => `. Bem-vindos ${g}!`,
+    church: " Preciso da ajuda de vocês para encontrar a igreja.",
+    feed: " E também preciso alimentar o Oscar com ossos todos os dias!",
+  },
   oscarIntro: {
     p1: "Au au! Eu sou o ",
     name: "Oscar",
@@ -263,6 +318,7 @@ const pt: Dict = {
     p3: " para a igreja abrir. Pegue ",
     treats: "os petiscos",
     p4: " pelo caminho — são para mim, claro!",
+    daily: " Todo dia eu escondo ossos novos em lugares novos, então volte amanhã — quem juntar mais ossos ganha!",
   },
   howToPlay: "Como jogar",
   howMove: "Mover: setas / A · D",
@@ -331,6 +387,13 @@ const pt: Dict = {
   rank: "#",
   player: "Jogador",
   newRecord: "Novo recorde pessoal!",
+
+  boneRace: "Corrida dos ossos",
+  boneRaceEmpty: "Ninguém juntou ossos ainda — seja o primeiro!",
+  boneRaceToday: "Hoje",
+  boneRaceAllTime: "Total",
+  bonesToday: (n) => `${n} ossos hoje`,
+  bonesTotal: (n) => `${n} ossos no total`,
 };
 
 export const DICTS: Record<Lang, Dict> = { da, en, pt };
