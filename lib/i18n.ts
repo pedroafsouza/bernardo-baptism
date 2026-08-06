@@ -106,6 +106,10 @@ type Dict = {
   boneRaceAllTime: string;
   bonesToday: (n: number) => string;
   bonesTotal: (n: number) => string;
+
+  /** The two halves of the closing screen. */
+  tabRsvp: string;
+  tabCompetition: string;
 };
 
 const da: Dict = {
@@ -202,6 +206,9 @@ const da: Dict = {
   boneRaceAllTime: "I alt",
   bonesToday: (n) => `${n} ben i dag`,
   bonesTotal: (n) => `${n} ben i alt`,
+
+  tabRsvp: "Svar",
+  tabCompetition: "Konkurrence",
 };
 
 const en: Dict = {
@@ -298,6 +305,9 @@ const en: Dict = {
   boneRaceAllTime: "All time",
   bonesToday: (n) => `${n} bones today`,
   bonesTotal: (n) => `${n} bones in total`,
+
+  tabRsvp: "Your reply",
+  tabCompetition: "Competition",
 };
 
 const pt: Dict = {
@@ -394,6 +404,9 @@ const pt: Dict = {
   boneRaceAllTime: "Total",
   bonesToday: (n) => `${n} ossos hoje`,
   bonesTotal: (n) => `${n} ossos no total`,
+
+  tabRsvp: "Resposta",
+  tabCompetition: "Competição",
 };
 
 export const DICTS: Record<Lang, Dict> = { da, en, pt };

@@ -152,9 +152,38 @@ export async function POST(req: NextRequest) {
   }
 }
 
-/** The bones laid out for a given day — the same list the game builds locally. */
+/**
+ * The bones laid out for a given day — the same list the game builds locally —
+ * and, if a guest is named, the ones they have already handed in.
+ *
+ * Reloading the page is not a way to collect a bone twice, so the game asks for
+ * this before it builds the level and simply leaves those bones out. The
+ * standings would ignore the duplicates anyway; this stops them being picked up
+ * in the first place, which is what a returning guest actually expects to see.
+ */
 export async function GET(req: NextRequest) {
   const day = req.nextUrl.searchParams.get("day");
   const resolved = isBoneDay(day) && acceptableBoneDays().includes(day) ? day : boneDay();
-  return NextResponse.json({ day: resolved, count: dailyBoneCount(resolved) });
+  const count = dailyBoneCount(resolved);
+
+  const guestCode = safeId(req.nextUrl.searchParams.get("code"));
+  if (!guestCode || isDemoCode(guestCode)) {
+    return NextResponse.json({ day: resolved, count, collected: [] });
+  }
+
+  try {
+    const rows = await prisma.boneCollection.findMany({
+      where: { guestCode, day: resolved },
+      select: { boneIndex: true },
+    });
+    return NextResponse.json({
+      day: resolved,
+      count,
+      collected: rows.map((r) => r.boneIndex).filter((i) => i >= 0 && i < count),
+    });
+  } catch {
+    // Never let a lookup failure keep a guest out of the game — worst case they
+    // pick a bone up again and the unique key drops it.
+    return NextResponse.json({ day: resolved, count, collected: [] });
+  }
 }

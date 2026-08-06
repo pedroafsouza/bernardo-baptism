@@ -14,6 +14,8 @@ type Props = {
   onBoneCollected?: (boneIndex: number) => void;
   /** The day whose bone layout to build, `YYYY-MM-DD`. */
   day?: string;
+  /** Bones this guest already handed in today — left out of the level. */
+  collected?: number[];
   lang: Lang;
   disabled?: boolean;
 };
@@ -23,6 +25,7 @@ export default function PhaserGame({
   onProgress,
   onBoneCollected,
   day,
+  collected,
   lang,
   disabled,
 }: Props) {
@@ -114,6 +117,7 @@ export default function PhaserGame({
         onEnterRef,
         onBoneRef,
         day,
+        collected,
         lang,
       });
 

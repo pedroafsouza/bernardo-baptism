@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { EVENT } from "@/lib/config";
 import { OscarSays } from "@/components/Oscar";
 import Icon from "@/components/Icon";
@@ -64,6 +64,13 @@ export default function RsvpModal({
     guest?.status === "ATTENDING" || guest?.status === "DECLINED" ? guest.status : null
   );
   const [error, setError] = useState<string | null>(null);
+  // The reply is what this screen is for, so it opens on the reply and the
+  // standings sit one tap away rather than between the guest and the buttons.
+  const [tab, setTab] = useState<"rsvp" | "race">("rsvp");
+  const bodyRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    bodyRef.current?.scrollTo({ top: 0 });
+  }, [tab]);
 
   const name = guest?.name ?? "Friend";
   const ceremonyTime =
@@ -126,7 +133,10 @@ export default function RsvpModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
-      <div className="pixel-border relative w-full max-w-md bg-pastel-cream border-4 border-black p-5 sm:p-6 max-h-[calc(100dvh-2rem)] overflow-y-auto">
+      <div
+        ref={bodyRef}
+        className="pixel-border relative w-full max-w-md bg-pastel-cream border-4 border-black p-5 sm:p-6 max-h-[calc(100dvh-2rem)] overflow-y-auto"
+      >
         <button
           onClick={onClose}
           aria-label={t.close}
@@ -135,21 +145,54 @@ export default function RsvpModal({
           <Icon name="close" />
         </button>
 
-        {!result ? (
-          <div className="text-black">
-            <div className="text-center mb-4">
-              <div className="flex items-center justify-center gap-3 text-2xl mb-2">
-                <Icon name="baby" className="text-[#d98ba5]" />
-                <Icon name="cross" className="text-pastel-purple" />
-              </div>
-              <h1 className="text-[21px] sm:text-[24px] leading-relaxed">
-                {t.rsvpWelcome(name)}
-              </h1>
-              <p className="text-[14px] sm:text-[16px] mt-2 text-pastel-purple">
-                {t.invitedTo}
-              </p>
+        <div className="text-black">
+          <div className="text-center mb-4">
+            <div className="flex items-center justify-center gap-3 text-2xl mb-2">
+              <Icon name="baby" className="text-[#d98ba5]" />
+              <Icon name="cross" className="text-pastel-purple" />
             </div>
+            <h1 className="text-[21px] sm:text-[24px] leading-relaxed">
+              {t.rsvpWelcome(name)}
+            </h1>
+            <p className="text-[14px] sm:text-[16px] mt-2 text-pastel-purple">
+              {t.invitedTo}
+            </p>
+          </div>
 
+          <div role="tablist" className="flex gap-1 mb-4">
+            {([
+              ["rsvp", t.tabRsvp, "mail"],
+              ["race", t.tabCompetition, "trophy"],
+            ] as const).map(([id, label, icon]) => (
+              <button
+                key={id}
+                role="tab"
+                aria-selected={tab === id}
+                onClick={() => setTab(id)}
+                className={`pixel-btn flex-1 border-4 border-black py-2 px-2 text-[14px] flex items-center justify-center gap-2 ${
+                  tab === id ? "bg-pastel-green" : "bg-white"
+                }`}
+              >
+                <Icon name={icon} /> {label}
+              </button>
+            ))}
+          </div>
+
+          {tab === "race" ? (
+            <div className="space-y-4">
+              <BoneRace
+                lang={lang}
+                highlightCode={guest?.guestCode}
+                refreshKey={leaderboardKey}
+              />
+              <Leaderboard
+                lang={lang}
+                highlightCode={guest?.guestCode}
+                refreshKey={leaderboardKey}
+              />
+            </div>
+          ) : !result ? (
+          <div>
             {/* Run summary — only after actually playing to the church */}
             {run && (
               <div className="bg-white border-4 border-black p-3 mb-4 text-[14px] leading-relaxed">
@@ -174,22 +217,6 @@ export default function RsvpModal({
                 )}
               </div>
             )}
-
-            <div className="mb-4">
-              <Leaderboard
-                lang={lang}
-                highlightCode={guest?.guestCode}
-                refreshKey={leaderboardKey}
-              />
-            </div>
-
-            <div className="mb-4">
-              <BoneRace
-                lang={lang}
-                highlightCode={guest?.guestCode}
-                refreshKey={leaderboardKey}
-              />
-            </div>
 
             {demo && (
               <p className="bg-pastel-purple text-white border-4 border-black p-2 mb-4 text-[13px] leading-relaxed flex items-center gap-2">
@@ -340,8 +367,8 @@ export default function RsvpModal({
               </button>
             </div>
           </div>
-        ) : (
-          <div className="text-center text-black py-4">
+          ) : (
+          <div className="text-center py-4">
             <div className="text-4xl mb-4">
               <Icon
                 name={result === "ATTENDING" ? "celebrate" : "mail"}
@@ -372,7 +399,8 @@ export default function RsvpModal({
               <Icon name="close" /> {t.close}
             </button>
           </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

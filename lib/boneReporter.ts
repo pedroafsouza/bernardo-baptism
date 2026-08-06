@@ -32,6 +32,8 @@ type Options = {
   day: string;
   /** Called after a successful flush with the standings for this guest. */
   onSynced?: (result: { today: number; total: number }) => void;
+  /** Bones already on record for this guest today — never sent again. */
+  known?: number[];
   intervalMs?: number;
 };
 
@@ -39,12 +41,13 @@ export function createBoneReporter({
   guestCode,
   day,
   onSynced,
+  known = [],
   intervalMs = BONE_FLUSH_MS,
 }: Options): BoneReporter {
   // A Set, so the same bone queued twice (a double overlap, a retry) is one
   // entry, and bones already accepted are never re-sent.
   let pending = new Set<number>();
-  const sent = new Set<number>();
+  const sent = new Set<number>(known);
   let inFlight = false;
   let stopped = false;
 

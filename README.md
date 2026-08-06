@@ -84,15 +84,26 @@ Handing the same bone in twice changes nothing: `BoneCollection` is unique on
 (guest, day, bone), so a retry, a reload or two overlapping flushes are all
 absorbed silently. That is what makes a best-effort client safe.
 
+**A fetched bone stays fetched.** Before the level is built the game asks which
+of today's bones this guest has already handed in, and simply leaves those out —
+so reloading is not a way to walk the same route again, and a guest coming back
+mid-morning sees only what is left for them. The duplicates would have been
+dropped by the unique key anyway; this is about the ground matching the
+standings.
+
 **The competition.** `/api/bones/leaderboard` returns two standings from the same
-rows — today's race and the running total — and both are shown next to the score
-in the RSVP screen. Bones popped out of a "?" block are bonus treats that belong
-to no day: they count towards the score and towards feeding Oscar, but not
-towards the race.
+rows — today's race and the running total. Bones popped out of a "?" block are
+bonus treats that belong to no day: they count towards the score and towards
+feeding Oscar, but not towards the race.
+
+The closing screen has two tabs. It opens on **the reply**, because that is what
+the invitation is actually asking for and nothing should sit between the guest
+and the yes/no buttons. **The competition** — the bone race and the score
+leaderboard — is one tap away, and stays reachable after the reply is sent.
 
 | Endpoint                  |                                                          |
 | ------------------------- | -------------------------------------------------------- |
-| `GET /api/bones`          | The day currently open and how many bones it holds        |
+| `GET /api/bones`          | The day currently open, how many bones it holds, and (with `?code=`) which of them a guest already has |
 | `POST /api/bones`         | Hand in a batch: `{ guestCode, day, bones: number[] }`    |
 | `GET /api/bones/leaderboard` | Today's race and the all-time race                    |
 
@@ -270,7 +281,7 @@ group, so a reset can never race a deploy.
 | `npm run seed`   | Upsert the guest list (never overwrites answers) and create the first admin |
 | `npm run db:backfill` | Fill in invitation capacity for rows that predate it (idempotent) |
 | `npm run db:verify` | Check a database is fit to be production: every guest registered with the right capacity, and an administrator present |
-| `npm test`       | Unit tests for the password policy, the invitation capacity rules, the daily bone layout and the name splitting |
+| `npm test`       | Unit tests for the password policy, the invitation capacity rules, the daily bone layout, the throttled hand-in and the name splitting |
 
 ---
 

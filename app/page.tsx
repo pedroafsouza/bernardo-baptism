@@ -45,6 +45,9 @@ function InvitationInner() {
   // a run that straddles midnight still hands its bones in to the day it was
   // actually playing.
   const [day] = useState(() => boneDay());
+  // Bones this guest already handed in today. Fetched before the level is built
+  // so a reload never puts a collected bone back on the ground.
+  const [collected, setCollected] = useState<number[] | null>(null);
 
   // Live progress mirrored out of the game so the run can be scored on arrival.
   const progress = useRef({ blessings: 0, bones: 0 });
@@ -54,14 +57,14 @@ function InvitationInner() {
   const reporter = useRef<BoneReporter | null>(null);
 
   useEffect(() => {
-    if (!code) return;
-    const instance = createBoneReporter({ guestCode: code, day });
+    if (!code || collected === null) return;
+    const instance = createBoneReporter({ guestCode: code, day, known: collected });
     reporter.current = instance;
     return () => {
       instance.stop();
       reporter.current = null;
     };
-  }, [code, day]);
+  }, [code, day, collected]);
 
   useEffect(() => {
     let active = true;
@@ -74,26 +77,43 @@ function InvitationInner() {
       // it also works when the guest list is empty or unreachable.
       if (isDemoCode(code)) {
         setGuest(demoGuest());
+        setCollected([]);
         setLoading(false);
         return;
       }
+      const query = `code=${encodeURIComponent(code)}`;
+      const [rsvp, bones] = await Promise.allSettled([
+        fetch(`/api/rsvp?${query}`),
+        fetch(`/api/bones?${query}&day=${encodeURIComponent(day)}`),
+      ]);
       try {
-        const res = await fetch(`/api/rsvp?code=${encodeURIComponent(code)}`);
-        if (res.ok) {
-          const data = await res.json();
+        if (rsvp.status === "fulfilled" && rsvp.value.ok) {
+          const data = await rsvp.value.json();
           if (active) setGuest(data.guest);
         }
       } catch {
         /* ignore */
-      } finally {
-        if (active) setLoading(false);
       }
+      try {
+        const list =
+          bones.status === "fulfilled" && bones.value.ok
+            ? ((await bones.value.json()).collected as unknown)
+            : [];
+        if (active) {
+          setCollected(Array.isArray(list) ? list.map(Number).filter(Number.isInteger) : []);
+        }
+      } catch {
+        // The day's bones are worth playing for even if we could not ask what
+        // was already fetched — the server drops the duplicates anyway.
+        if (active) setCollected([]);
+      }
+      if (active) setLoading(false);
     }
     load();
     return () => {
       active = false;
     };
-  }, [code]);
+  }, [code, day]);
 
   const submitRun = useCallback(
     async (finished: boolean) => {
@@ -155,7 +175,7 @@ function InvitationInner() {
     );
   }
 
-  if (loading) {
+  if (loading || collected === null) {
     return (
       <main className="game-root flex items-center justify-center">
         <p className="text-black text-xs animate-pulse flex items-center gap-2">
@@ -189,6 +209,7 @@ function InvitationInner() {
         key={lang}
         lang={lang}
         day={day}
+        collected={collected}
         onEnterChurch={() => openRsvp(true)}
         onBoneCollected={(boneIndex) => reporter.current?.collect(boneIndex)}
         onProgress={(p) => {

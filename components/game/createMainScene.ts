@@ -42,6 +42,11 @@ export type SceneDeps = {
    * "?" block are bonus treats that belong to no day and are not reported.
    */
   onBoneRef?: { current: (boneIndex: number) => void };
+  /**
+   * Bones this guest already handed in today. They are simply not laid out, so
+   * reloading the page never puts a collected bone back on the ground.
+   */
+  collected?: number[];
 };
 
 // The pixel-game look without the eye strain: Pixelify Sans has real lowercase
@@ -80,6 +85,9 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
   // baked into the level. Same date, same layout, for everybody.
   const day = deps.day ?? boneDay();
   const todaysBones = dailyBones(day, level.id);
+  // A bone already fetched today stays fetched: it is left out of the level
+  // rather than picked up again for nothing.
+  const alreadyCollected = new Set(deps.collected ?? []);
 
   return class MainScene extends Phaser.Scene {
         player!: any;
@@ -545,11 +553,15 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
           // blessings (3 golden crosses) + today's bones along the journey.
           // `lvl.bones` is only a fallback: it is the hand-authored layout, kept
           // so a level with no valid daily candidates still has treats in it.
+          // Bones handed in earlier today are skipped, not respawned.
           lvl.crosses.forEach(([x, y]) => this.addCross(x, y));
-          const bones = todaysBones.length > 0 ? todaysBones : lvl.bones;
-          bones.forEach(([x, y], i) =>
-            this.addCoin(x, y, todaysBones.length > 0 ? i : -1)
-          );
+          if (todaysBones.length > 0) {
+            todaysBones.forEach(([x, y], i) => {
+              if (!alreadyCollected.has(i)) this.addCoin(x, y, i);
+            });
+          } else {
+            lvl.bones.forEach(([x, y]) => this.addCoin(x, y, -1));
+          }
 
           // bouncy World Cup footballs the bear can kick around
           // Arcade Physics separates circle bodies against static rectangles very
