@@ -165,9 +165,53 @@ export default function PhaserGame({
   }, []);
 
   // ---- touch controls ----
-  const set = useCallback((k: keyof Control, v: boolean) => {
-    ctrl.current[k] = v;
+  // Which button each live finger/mouse pointer is currently holding. A touch
+  // implicitly captures its start target, so sliding a thumb from RIGHT to LEFT
+  // never fires leave/enter on the buttons themselves — the old code left RIGHT
+  // stuck down. We release that capture and route every pointer through this map
+  // so a key is only held while some pointer is actually on top of it.
+  const held = useRef<Map<number, keyof Control>>(new Map());
+
+  const press = useCallback((id: number, k: keyof Control) => {
+    const prev = held.current.get(id);
+    if (prev === k) return;
+    if (prev) ctrl.current[prev] = false;
+    held.current.set(id, k);
+    ctrl.current[k] = true;
   }, []);
+
+  const release = useCallback((id: number) => {
+    const prev = held.current.get(id);
+    if (!prev) return;
+    held.current.delete(id);
+    // another finger may still be resting on the same button
+    let stillHeld = false;
+    held.current.forEach((k) => {
+      if (k === prev) stillHeld = true;
+    });
+    if (!stillHeld) ctrl.current[prev] = false;
+  }, []);
+
+  // A finger lifted outside the pad (or a cancelled gesture) never reaches the
+  // button, so the window is the only reliable place to clear it.
+  useEffect(() => {
+    const clear = (e: PointerEvent) => release(e.pointerId);
+    window.addEventListener("pointerup", clear);
+    window.addEventListener("pointercancel", clear);
+    return () => {
+      window.removeEventListener("pointerup", clear);
+      window.removeEventListener("pointercancel", clear);
+    };
+  }, [release]);
+
+  // The pad is hidden/disabled mid-hold when a modal opens — drop every key.
+  useEffect(() => {
+    if (!disabled) return;
+    held.current.clear();
+    ctrl.current.left = false;
+    ctrl.current.right = false;
+    ctrl.current.jump = false;
+  }, [disabled]);
 
   const holdBtn = useCallback(
     (k: keyof Control, label: React.ReactNode, extra = "") => (
@@ -176,20 +220,29 @@ export default function PhaserGame({
         className={`select-none pixel-btn flex items-center justify-center border-4 border-black text-black active:brightness-90 ${extra}`}
         onPointerDown={(e) => {
           e.preventDefault();
-          set(k, true);
+          if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+            e.currentTarget.releasePointerCapture(e.pointerId);
+          }
+          press(e.pointerId, k);
+        }}
+        onPointerEnter={(e) => {
+          // sliding onto this button with the finger/mouse still down
+          if (e.pointerType === "touch" || e.buttons > 0) {
+            press(e.pointerId, k);
+          }
         }}
         onPointerUp={(e) => {
           e.preventDefault();
-          set(k, false);
+          release(e.pointerId);
         }}
-        onPointerLeave={() => set(k, false)}
-        onPointerCancel={() => set(k, false)}
+        onPointerLeave={(e) => release(e.pointerId)}
+        onPointerCancel={(e) => release(e.pointerId)}
         onContextMenu={(e) => e.preventDefault()}
       >
         {label}
       </button>
     ),
-    [set]
+    [press, release]
   );
 
   // Every bone Bernardo grabs bumps `coins`, which re-renders this component.

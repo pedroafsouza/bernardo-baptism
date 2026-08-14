@@ -804,9 +804,10 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
           this.oscarBaseY = this.spawnY + 28;
           if (!this.anims.exists("oscarWalk")) {
             // Sprite sheet is 8 columns of 64x52 cells:
-            //   0-1 stand · 2-7 walk · 8-9 facing camera · 10-13 run · 14 turn
-            //   15-16 jump · 17 fall · 18 land · 19-20 play bow · 21 bark
-            //   22-23 hurt · 24-25 tumble · 26 cheer · 27-28 sit
+            //   0-1 stand · 2-4,6-7 walk (5 faces the camera) · 8-9 facing camera
+            //   10-12 run (13 is drawn facing left) · 14 turn · 15-16 jump
+            //   17 fall · 18 land · 19-20 play bow · 21 bark · 22-23 trot
+            //   24-25 tumble · 26 cheer · 27-28 sit
             const anim = (
               key: string,
               frames: number[],
@@ -819,8 +820,11 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
                 frameRate,
                 repeat,
               });
-            anim("oscarWalk", [2, 3, 4, 5, 6, 7], 10);
-            anim("oscarRun", [10, 11, 12, 13], 14);
+            // Only the clean right-facing side poses go in the locomotion cycles:
+            // frame 5 is drawn head-on and frame 13 faces left, so mixing them in
+            // made Oscar look like he kept spinning around mid-stride.
+            anim("oscarWalk", [2, 3, 6, 7, 22, 23], 10);
+            anim("oscarRun", [10, 11, 12], 12);
             anim("oscarIdle", [0, 1], 1.6);
             anim("oscarJump", [15], 1, 0);
             anim("oscarFall", [17], 1, 0);
