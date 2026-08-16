@@ -225,7 +225,10 @@ function AdminPageInner() {
   }
 
   /** Returns true when the household was stored, so the modal can close. */
-  async function saveGuest(values: GuestFormValues): Promise<boolean> {
+  async function saveGuest(
+    values: GuestFormValues,
+    answersChanged: boolean
+  ): Promise<boolean> {
     setError(null);
     const res = await fetch("/api/admin/guests", {
       method: "POST",
@@ -237,6 +240,15 @@ function AdminPageInner() {
       const d = await res.json().catch(() => ({}));
       throw new Error(d.error || t.couldNotSave);
     }
+
+    // The household has to exist before its people can answer, and the names
+    // have to be the new ones: an invitation renamed to add somebody only grows
+    // their seat once it is stored. So the answers follow in a second step.
+    const saved = (await res.json().catch(() => null))?.guest as Guest | undefined;
+    if (answersChanged && saved) {
+      await putAnswers({ ...saved, attendees: values.attendees }, values.attendees);
+    }
+
     setGuestForm(null);
     await load();
     return true;
@@ -262,6 +274,7 @@ function AdminPageInner() {
       maxKids: g.maxKids,
       likely: g.likely,
       inviteSent: g.inviteSent,
+      attendees: g.attendees ?? [],
     });
   }
 

@@ -424,7 +424,8 @@ const da: AdminDict = {
   editGuest: "Rediger gæst",
   addGuest: "Tilføj gæst",
   guestAnswersHint:
-    "Gæsterne svarer selv, hvor mange der kommer i kirken og til festen.",
+    "Gæsterne svarer selv — og her kan du rette et enkelt svar. " +
+    "Skriv ”og” eller et komma mellem navnene, så får hver person sit eget svar.",
   namePlaceholder: "Navn",
   adults: "Voksne (bekræftet)",
   kids: "Børn (bekræftet)",
@@ -667,7 +668,8 @@ const en: AdminDict = {
   editGuest: "Edit guest",
   addGuest: "Add guest",
   guestAnswersHint:
-    "Guests answer for themselves how many come to the church and to the party.",
+    "Guests answer for themselves — and here you can correct a single answer. " +
+    "Put “and” or a comma between the names and each person gets an answer of their own.",
   namePlaceholder: "Name",
   adults: "Adults (confirmed)",
   kids: "Kids (confirmed)",

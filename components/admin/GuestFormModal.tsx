@@ -2,8 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import Icon from "@/components/Icon";
+import AnswerButtons from "@/components/admin/AnswerButtons";
 import type { AdminDict } from "@/lib/adminI18n";
 import { inviteCodeFromName } from "@/lib/inviteCode";
+import {
+  attendeeSlots,
+  partyFromAttendees,
+  type AttendeeSlot,
+  type AttendeeStatus,
+} from "@/lib/attendees";
+import { countGuestNames } from "@/lib/names";
 
 /**
  * What an administrator decides about a household: who they are and how many
@@ -21,6 +29,8 @@ export type GuestFormValues = {
   maxKids: number;
   likely: boolean;
   inviteSent: boolean;
+  /** Who is on the invitation, and what each of them answered. */
+  attendees: AttendeeSlot[];
 };
 
 export const emptyGuestForm: GuestFormValues = {
@@ -33,6 +43,7 @@ export const emptyGuestForm: GuestFormValues = {
   maxKids: 0,
   likely: true,
   inviteSent: false,
+  attendees: [],
 };
 
 type Props = {
@@ -42,11 +53,18 @@ type Props = {
   statuses: readonly string[];
   /** Codes already in use, so a generated one never collides. */
   takenCodes: string[];
-  onSave: (values: GuestFormValues) => Promise<boolean>;
+  /**
+   * `answersChanged` says whether the individual answers were touched here, so
+   * a household opened only to fix a typo is never re-answered behind its back.
+   */
+  onSave: (values: GuestFormValues, answersChanged: boolean) => Promise<boolean>;
   onClose: () => void;
 };
 
 const fieldLabel = "text-[11px] uppercase tracking-wide opacity-70";
+
+/** The status of a household is read off its adults; children never change it. */
+const ZERO_KIDS = { church: 0, reception: 0 };
 
 export default function GuestFormModal({
   t,
@@ -59,8 +77,40 @@ export default function GuestFormModal({
 }: Props) {
   const [form, setForm] = useState<GuestFormValues>(initial);
   const [saving, setSaving] = useState(false);
+  const [answersChanged, setAnswersChanged] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const firstField = useRef<HTMLInputElement>(null);
+
+  // The people are read off the household line as it is typed, so adding "and
+  // Pedro" to a name puts Pedro on the invitation straight away, with his own
+  // answer to give. Answers already given stay with the person who gave them.
+  const people = attendeeSlots({ name: form.name, maxGuests: form.maxGuests }, form.attendees);
+
+  function editPerson(position: number, change: Partial<AttendeeSlot>) {
+    setAnswersChanged(true);
+    setForm((f) => {
+      const next = attendeeSlots({ name: f.name, maxGuests: f.maxGuests }, f.attendees).map((p) =>
+        p.position === position ? { ...p, ...change } : p
+      );
+      // The household's own status is read off its people, never set beside
+      // them: two answers that disagree would be one answer too many.
+      return { ...f, attendees: next, status: partyFromAttendees(next, ZERO_KIDS).status };
+    });
+  }
+
+  /** Answering for the whole household at once: everybody, both halves of the day. */
+  function answerForEveryone(status: string) {
+    setAnswersChanged(true);
+    setForm((f) => {
+      const said = (status === "ATTENDING" || status === "DECLINED"
+        ? status
+        : "PENDING") as AttendeeStatus;
+      const next = attendeeSlots({ name: f.name, maxGuests: f.maxGuests }, f.attendees).map(
+        (p) => ({ ...p, church: said, reception: said })
+      );
+      return { ...f, attendees: next, status };
+    });
+  }
 
   useEffect(() => {
     firstField.current?.focus();
@@ -79,7 +129,9 @@ export default function GuestFormModal({
     setError(null);
     setSaving(true);
     try {
-      const ok = await onSave(form);
+      // What is on screen is what is saved, including the people who were left
+      // exactly as they were found.
+      const ok = await onSave({ ...form, attendees: people }, answersChanged);
       if (!ok) setError(t.couldNotSave);
     } catch (err: any) {
       setError(err?.message || t.couldNotSave);
@@ -166,6 +218,10 @@ export default function GuestFormModal({
                   return {
                     ...f,
                     name,
+                    // "and", "og", "e" and a comma each name another person, and
+                    // each of them answers for themselves — so the invitation
+                    // grows a seat rather than leaving somebody unable to reply.
+                    maxGuests: Math.max(f.maxGuests, Math.min(countGuestNames(name), 10)),
                     guestCode:
                       f.id || !proposed ? f.guestCode : inviteCodeFromName(name, takenCodes),
                   };
@@ -191,7 +247,7 @@ export default function GuestFormModal({
             <span className={fieldLabel}>{t.colStatus}</span>
             <select
               value={form.status}
-              onChange={(e) => setForm({ ...form, status: e.target.value })}
+              onChange={(e) => answerForEveryone(e.target.value)}
               className="border-4 border-black p-2 text-[14px] w-full"
             >
               {statuses.map((s) => (
@@ -240,6 +296,59 @@ export default function GuestFormModal({
             {t.inviteSent}
           </label>
         </div>
+
+        {/*
+          The household's numbers are read off these answers, so this is where a
+          single person is corrected: one of them can come to the church while
+          the other cannot, and either can be left unanswered.
+        */}
+        {form.name.trim().length > 0 && (
+          <section className="mt-5 border-t-4 border-black pt-4">
+            <h3 className="text-[14px] flex items-center gap-2">
+              <Icon name="guests" className="h-4 w-4" />
+              {t.whoIsComing}
+            </h3>
+            <p className="text-[12px] opacity-60 mt-1">{t.answerHint}</p>
+            <ul className="flex flex-col gap-2 mt-3">
+              {people.map((person) => (
+                <li
+                  key={person.position}
+                  className="flex flex-wrap items-center gap-2 text-[13px]"
+                >
+                  <span className="min-w-[7rem] font-bold break-words">{person.name}</span>
+                  {(
+                    [
+                      ["church", t.atChurch, person.church],
+                      ["reception", t.atReception, person.reception],
+                    ] as const
+                  ).map(([part, label, said]) => (
+                    <AnswerButtons
+                      key={part}
+                      said={said}
+                      label={label}
+                      attendingText={t.personAttending}
+                      declinedText={t.personDeclined}
+                      pendingText={t.personPending}
+                      title={t.answerFor(person.name)}
+                      onAnswer={(next: AttendeeStatus) => editPerson(person.position, { [part]: next })}
+                    />
+                  ))}
+                  {person.reception === "ATTENDING" && (
+                    <input
+                      value={person.allergies}
+                      onChange={(e) =>
+                        editPerson(person.position, { allergies: e.target.value })
+                      }
+                      placeholder={t.allergyPlaceholder}
+                      aria-label={`${t.allergies} — ${person.name}`}
+                      className="border-2 border-black p-1 text-[13px] flex-1 min-w-[8rem]"
+                    />
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {error && (
           <p className="text-red-700 text-[14px] mt-4 flex items-center gap-2">
