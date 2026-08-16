@@ -10,15 +10,20 @@ import { DICTS, type Lang } from "@/lib/i18n";
 import { formatNameList } from "@/lib/names";
 import {
   attendeeSlots,
+  attending as attendingTo,
   partyFromAttendees,
   MAX_ALLERGY_LENGTH,
   type AttendeeSlot,
+  type Part,
 } from "@/lib/attendees";
 
 type Guest = {
   guestCode: string;
   name: string;
   status: string;
+  /** The church and the party are answered separately, so both are counted. */
+  churchCount?: number;
+  churchKids?: number;
   guestCount: number;
   kids: number;
   kidsAllergies?: string;
@@ -48,8 +53,11 @@ type Props = {
   onSaved?: (guest: Guest, attendees: AttendeeSlot[]) => void;
 };
 
-/** The reply is given in three short steps, then answered for. */
-type Step = "congrats" | "invitation" | "party";
+/**
+ * The reply is given in short steps. The day is two invitations — the
+ * christening and the party afterwards — so each is answered on its own screen.
+ */
+type Step = "congrats" | "invitation" | "church" | "reception";
 
 /**
  * One collapsible allergy note. It opens by itself once there is something in
@@ -133,6 +141,9 @@ export default function RsvpModal({
   const [people, setPeople] = useState<AttendeeSlot[]>(() =>
     guest ? attendeeSlots(guest, attendees ?? []) : []
   );
+  const [churchKids, setChurchKids] = useState(
+    Math.min(Math.max(guest?.churchKids ?? 0, 0), maxKids)
+  );
   const [kids, setKids] = useState(Math.min(Math.max(guest?.kids ?? 0, 0), maxKids));
   const [kidsAllergies, setKidsAllergies] = useState(guest?.kidsAllergies ?? "");
   const [open, setOpen] = useState<Record<string, boolean>>({});
@@ -152,14 +163,17 @@ export default function RsvpModal({
     bodyRef.current?.scrollTo({ top: 0 });
   }, [tab, step, result]);
 
-  const steps: Step[] = ["congrats", "invitation", "party"];
+  const steps: Step[] = ["congrats", "invitation", "church", "reception"];
   const stepIndex = steps.indexOf(step);
 
   const name = guest?.name ?? "Friend";
-  const attending = people.filter((p) => p.status === "ATTENDING");
-  const declining = people.filter((p) => p.status === "DECLINED");
-  const everyoneAnswered = people.length > 0 && people.every((p) => p.status !== "PENDING");
-  const party = useMemo(() => partyFromAttendees(people, kids), [people, kids]);
+  const everyoneAnswered =
+    people.length > 0 &&
+    people.every((p) => p.church !== "PENDING" && p.reception !== "PENDING");
+  const party = useMemo(
+    () => partyFromAttendees(people, { church: churchKids, reception: kids }),
+    [people, churchKids, kids]
+  );
 
   const ceremonyTime =
     lang === "en"
@@ -174,17 +188,23 @@ export default function RsvpModal({
         ? EVENT.receptionTimePt
         : EVENT.receptionTime;
 
-  function answer(position: number, coming: boolean) {
+  function answer(position: number, part: Part, coming: boolean) {
     setError(null);
     setPeople((list) =>
       list.map((p) =>
         p.position === position
-          ? { ...p, status: coming ? "ATTENDING" : "DECLINED", allergies: coming ? p.allergies : "" }
+          ? {
+              ...p,
+              [part]: coming ? "ATTENDING" : "DECLINED",
+              // The food is at the party, so an empty seat there carries no note.
+              allergies: part === "reception" && !coming ? "" : p.allergies,
+            }
           : p
       )
     );
-    // Nobody needs an allergy field for a seat that stays empty.
-    if (!coming) setOpen((o) => ({ ...o, [`p${position}`]: false }));
+    if (part === "reception" && !coming) {
+      setOpen((o) => ({ ...o, [`p${position}`]: false }));
+    }
   }
 
   /** Open when asked, or by itself once the note has something in it. */
@@ -213,15 +233,19 @@ export default function RsvpModal({
       guestCode: guest.guestCode,
       attendees: people.map((p) => ({
         position: p.position,
-        attending: p.status === "ATTENDING",
+        church: p.church === "ATTENDING",
+        reception: p.reception === "ATTENDING",
         allergies: p.allergies,
       })),
+      churchKids: party.churchKids,
       kids: party.kids,
       kidsAllergies: party.kids > 0 ? kidsAllergies : "",
     };
     const saved: Guest = {
       ...guest,
       status: party.status === "ATTENDING" ? "ATTENDING" : "DECLINED",
+      churchCount: party.churchCount,
+      churchKids: party.churchKids,
       guestCount: party.guestCount,
       kids: party.kids,
       kidsAllergies: payload.kidsAllergies,
@@ -432,61 +456,78 @@ export default function RsvpModal({
               </section>
             )}
 
-            {step === "party" && (
+            {(step === "church" || step === "reception") && (
               <section className="flex flex-col gap-4">
                 <div className="text-center">
-                  <h2 className="text-[15px] leading-relaxed">{t.whoIsComing}</h2>
-                  <p className="text-[12px] opacity-75 mt-1.5 leading-relaxed">{t.whoIsComingHint}</p>
+                  <h2 className="text-[15px] leading-relaxed flex items-center justify-center gap-2">
+                    <Icon
+                      name={step === "church" ? "church" : "celebrate"}
+                      className="h-4 w-4 shrink-0 text-pastel-plum"
+                    />
+                    {step === "church" ? t.partChurch : t.partReception}
+                  </h2>
+                  <p className="text-[12px] opacity-75 mt-1.5 leading-relaxed">
+                    {step === "church" ? t.churchHint : t.receptionHint}
+                  </p>
+                  <p className="text-[12px] opacity-75 mt-2 leading-relaxed">
+                    {step === "church" ? ceremonyTime : receptionTime}
+                    <br />
+                    {step === "church" ? EVENT.ceremonyPlace : EVENT.receptionPlace}
+                  </p>
                 </div>
 
-                {/* One invitation, one answer per person. */}
+                {/* One invitation, one answer per person, for this half of the day. */}
                 <ul className="flex flex-col gap-3">
-                  {people.map((person) => (
-                    <li
-                      key={person.position}
-                      className="border-4 border-black bg-white p-3 flex flex-col gap-3"
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-                        <span className="text-[15px] break-words">{person.name}</span>
-                        <span className="flex shrink-0 gap-1">
-                          <button
-                            type="button"
-                            aria-pressed={person.status === "ATTENDING"}
-                            onClick={() => answer(person.position, true)}
-                            className={`pixel-btn flex items-center gap-1.5 border-2 border-black px-3 py-1.5 text-[13px] ${
-                              person.status === "ATTENDING" ? "bg-pastel-green" : "bg-white opacity-70"
-                            }`}
-                          >
-                            <Icon name="check" className="h-4 w-4 shrink-0" />
-                            {t.comingYes}
-                          </button>
-                          <button
-                            type="button"
-                            aria-pressed={person.status === "DECLINED"}
-                            onClick={() => answer(person.position, false)}
-                            className={`pixel-btn flex items-center gap-1.5 border-2 border-black px-3 py-1.5 text-[13px] ${
-                              person.status === "DECLINED" ? "bg-pastel-pink" : "bg-white opacity-70"
-                            }`}
-                          >
-                            <Icon name="close" className="h-4 w-4 shrink-0" />
-                            {t.comingNo}
-                          </button>
-                        </span>
-                      </div>
-                      {person.status === "ATTENDING" && (
-                        <AllergyAccordion
-                          id={`p${person.position}`}
-                          title={t.allergiesTitle}
-                          value={person.allergies}
-                          expanded={isOpen(`p${person.position}`, person.allergies)}
-                          placeholder={t.allergiesPlaceholder}
-                          emptyLabel={t.allergiesAdd}
-                          onToggle={() => toggle(`p${person.position}`, person.allergies)}
-                          onChange={(v) => setAllergies(person.position, v)}
-                        />
-                      )}
-                    </li>
-                  ))}
+                  {people.map((person) => {
+                    const said = person[step];
+                    return (
+                      <li
+                        key={person.position}
+                        className="border-4 border-black bg-white p-3 flex flex-col gap-3"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+                          <span className="text-[15px] break-words">{person.name}</span>
+                          <span className="flex shrink-0 gap-1">
+                            <button
+                              type="button"
+                              aria-pressed={said === "ATTENDING"}
+                              onClick={() => answer(person.position, step, true)}
+                              className={`pixel-btn flex items-center gap-1.5 border-2 border-black px-3 py-1.5 text-[13px] ${
+                                said === "ATTENDING" ? "bg-pastel-green" : "bg-white opacity-70"
+                              }`}
+                            >
+                              <Icon name="check" className="h-4 w-4 shrink-0" />
+                              {t.comingYes}
+                            </button>
+                            <button
+                              type="button"
+                              aria-pressed={said === "DECLINED"}
+                              onClick={() => answer(person.position, step, false)}
+                              className={`pixel-btn flex items-center gap-1.5 border-2 border-black px-3 py-1.5 text-[13px] ${
+                                said === "DECLINED" ? "bg-pastel-pink" : "bg-white opacity-70"
+                              }`}
+                            >
+                              <Icon name="close" className="h-4 w-4 shrink-0" />
+                              {t.comingNo}
+                            </button>
+                          </span>
+                        </div>
+                        {/* Allergies are asked where the food is served. */}
+                        {step === "reception" && said === "ATTENDING" && (
+                          <AllergyAccordion
+                            id={`p${person.position}`}
+                            title={t.allergiesTitle}
+                            value={person.allergies}
+                            expanded={isOpen(`p${person.position}`, person.allergies)}
+                            placeholder={t.allergiesPlaceholder}
+                            emptyLabel={t.allergiesAdd}
+                            onToggle={() => toggle(`p${person.position}`, person.allergies)}
+                            onChange={(v) => setAllergies(person.position, v)}
+                          />
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
 
                 {maxKids > 0 ? (
@@ -500,10 +541,12 @@ export default function RsvpModal({
                         <button
                           key={n}
                           type="button"
-                          aria-pressed={kids === n}
-                          onClick={() => setKids(n)}
+                          aria-pressed={(step === "church" ? churchKids : kids) === n}
+                          onClick={() => (step === "church" ? setChurchKids(n) : setKids(n))}
                           className={`pixel-btn w-11 h-11 border-4 border-black text-[17px] ${
-                            kids === n ? "bg-pastel-green" : "bg-white"
+                            (step === "church" ? churchKids : kids) === n
+                              ? "bg-pastel-green"
+                              : "bg-white"
                           }`}
                         >
                           {n}
@@ -516,7 +559,7 @@ export default function RsvpModal({
                       <Icon name="warning" className="mt-0.5 h-4 w-4 shrink-0" />
                       {t.kidsUnderOne}
                     </p>
-                    {kids > 0 && (
+                    {step === "reception" && kids > 0 && (
                       <AllergyAccordion
                         id="kids"
                         title={t.kidsAllergiesTitle}
@@ -544,7 +587,7 @@ export default function RsvpModal({
             )}
 
             <div className="flex flex-col gap-3 pt-1">
-              {step === "party" ? (
+              {step === "reception" ? (
                 <button
                   disabled={submitting}
                   onClick={submit}
@@ -596,19 +639,28 @@ export default function RsvpModal({
                 ? t.thanksBody(party.guestCount, party.kids)
                 : t.declinedBody}
             </p>
-            {/* Who is on the list, by name, so a split reply is unmistakable. */}
-            {people.length > 1 && (
-              <div className="mt-3 text-[13px] leading-relaxed">
-                {attending.length > 0 && (
-                  <p className="text-green-700">
-                    {t.attendingNames(formatNameList(attending.map((p) => p.name), lang))}
-                  </p>
-                )}
-                {declining.length > 0 && (
-                  <p className="opacity-70">
-                    {t.decliningNames(formatNameList(declining.map((p) => p.name), lang))}
-                  </p>
-                )}
+            {/* Both halves of the day, by name, so a split reply is unmistakable. */}
+            {result === "ATTENDING" && (
+              <div className="mt-5 flex flex-col gap-3 text-left text-[13px] leading-relaxed">
+                {([
+                  ["church", t.partChurch, "church", party.churchCount, party.churchKids],
+                  ["reception", t.partReception, "celebrate", party.guestCount, party.kids],
+                ] as const).map(([part, label, icon, adults, littleOnes]) => {
+                  const coming = attendingTo(people, part);
+                  return (
+                    <div key={part} className="border-2 border-black bg-white p-3">
+                      <p className="flex items-center gap-2">
+                        <Icon name={icon} className="h-4 w-4 shrink-0 text-pastel-plum" />
+                        <span>{label}</span>
+                      </p>
+                      <p className={`mt-1.5 ${coming.length > 0 ? "text-green-700" : "opacity-70"}`}>
+                        {coming.length > 0
+                          ? `${formatNameList(coming.map((p) => p.name), lang)} · ${t.comingCount(adults, littleOnes)}`
+                          : t.nobodyComing}
+                      </p>
+                    </div>
+                  );
+                })}
               </div>
             )}
             {demo && (
@@ -619,7 +671,7 @@ export default function RsvpModal({
             <button
               onClick={() => {
                 setResult(null);
-                setStep("party");
+                setStep("church");
               }}
               className="pixel-btn mt-5 mr-2 bg-pastel-green border-4 border-black py-2 px-4 text-[16px] inline-flex items-center gap-2"
             >

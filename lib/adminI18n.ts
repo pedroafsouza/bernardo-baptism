@@ -41,6 +41,11 @@ export type AdminDict = {
   answeredYes: string;
   totalPeople: string;
   adultsKids: (adults: number, kids: number) => string;
+  /** The day is answered in two halves, so it is counted in two halves. */
+  atChurch: string;
+  atReception: string;
+  churchAdults: string;
+  churchKids: string;
   invitationsSent: string;
   leftToSend: (n: number) => string;
   sendProgress: string;
@@ -340,6 +345,10 @@ const da: AdminDict = {
   ofTotal: (n) => `af ${n}`,
   answeredYes: "invitationer besvaret med ja",
   totalPeople: "Personer i alt",
+  atChurch: "I kirken",
+  atReception: "Til festen",
+  churchAdults: "Voksne i kirken",
+  churchKids: "Børn i kirken",
   adultsKids: (a, k) => `${a} voksne · ${k} børn`,
   invitationsSent: "Invitationer sendt",
   leftToSend: (n) => `${n} mangler at blive sendt`,
@@ -535,6 +544,10 @@ const en: AdminDict = {
   ofTotal: (n) => `of ${n}`,
   answeredYes: "invitations answered yes",
   totalPeople: "People in total",
+  atChurch: "At the church",
+  atReception: "At the party",
+  churchAdults: "Adults at the church",
+  churchKids: "Children at the church",
   adultsKids: (a, k) => `${a} adults · ${k} kids`,
   invitationsSent: "Invitations sent",
   leftToSend: (n) => `${n} left to send`,

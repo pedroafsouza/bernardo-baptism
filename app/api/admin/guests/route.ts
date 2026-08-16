@@ -39,30 +39,55 @@ function throttle(req: NextRequest) {
  * actually moved the household answer itself — otherwise editing an unrelated
  * field would quietly decide for people who had already replied.
  */
+type Household = {
+  guestCode: string;
+  name: string;
+  maxGuests: number;
+  status: string;
+  churchCount: number;
+  guestCount: number;
+};
+
 async function syncAttendees(
-  guest: { guestCode: string; name: string; maxGuests: number; status: string; guestCount: number },
-  previous: { status: string; guestCount: number } | null
+  guest: Household,
+  previous: { status: string; churchCount: number; guestCount: number } | null
 ): Promise<void> {
   const slots = await loadAttendeeSlots(guest);
-  const moved =
-    !previous || previous.status !== guest.status || previous.guestCount !== guest.guestCount;
+  const movedChurch = !previous || previous.churchCount !== guest.churchCount;
+  const movedReception = !previous || previous.guestCount !== guest.guestCount;
+  const movedStatus = !previous || previous.status !== guest.status;
 
-  const next: AttendeeSlot[] = !moved
-    ? slots
-    : slots.map((slot, i) => {
-        if (guest.status === "ATTENDING") {
-          const coming = i < guest.guestCount;
-          return {
-            ...slot,
-            status: coming ? ("ATTENDING" as const) : ("DECLINED" as const),
-            allergies: coming ? slot.allergies : "",
-          };
-        }
-        if (guest.status === "DECLINED") {
-          return { ...slot, status: "DECLINED" as const, allergies: "" };
-        }
-        return { ...slot, status: "PENDING" as const };
-      });
+  // A household set back to pending, or turned down wholesale, applies to both
+  // halves of the day; a changed head count only reshapes its own half.
+  const spread = (
+    slot: AttendeeSlot,
+    i: number,
+    part: "church" | "reception",
+    count: number,
+    moved: boolean
+  ) => {
+    if (guest.status === "PENDING") return movedStatus ? "PENDING" : slot[part];
+    if (guest.status === "DECLINED") return movedStatus ? "DECLINED" : slot[part];
+    if (!moved && !movedStatus) return slot[part];
+    return i < count ? "ATTENDING" : "DECLINED";
+  };
+
+  const next: AttendeeSlot[] = slots.map((slot, i) => {
+    const church = spread(slot, i, "church", guest.churchCount, movedChurch) as AttendeeSlot["church"];
+    const reception = spread(
+      slot,
+      i,
+      "reception",
+      guest.guestCount,
+      movedReception
+    ) as AttendeeSlot["reception"];
+    return {
+      ...slot,
+      church,
+      reception,
+      allergies: reception === "ATTENDING" ? slot.allergies : "",
+    };
+  });
 
   await saveAttendeeSlots(guest.guestCode, next);
 }
@@ -154,13 +179,25 @@ export async function POST(req: NextRequest) {
         },
         { maxGuests, maxKids }
       ),
+      // The church is counted on its own — some come to the christening only,
+      // and some only to the party.
+      ...(() => {
+        const church = clampParty(
+          {
+            guestCount: safeInt(raw.churchCount, 0, 10, 0),
+            kids: safeInt(raw.churchKids, 0, 10, 0),
+          },
+          { maxGuests, maxKids }
+        );
+        return { churchCount: church.guestCount, churchKids: church.kids };
+      })(),
       likely: raw.likely === undefined ? true : Boolean(raw.likely),
       inviteSent: Boolean(raw.inviteSent),
     };
 
     let guest;
     let created = false;
-    let previous: { status: string; guestCount: number } | null = null;
+    let previous: { status: string; churchCount: number; guestCount: number } | null = null;
     if (id) {
       const existing = await prisma.guest.findUnique({ where: { id } });
       if (!existing) {

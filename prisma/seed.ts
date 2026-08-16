@@ -63,12 +63,47 @@ async function clampToCapacity() {
   let fixed = 0;
   for (const g of guests) {
     const { guestCount, kids } = clampParty(g, g);
-    if (guestCount !== g.guestCount || kids !== g.kids) {
-      await prisma.guest.update({ where: { id: g.id }, data: { guestCount, kids } });
+    const church = clampParty({ guestCount: g.churchCount, kids: g.churchKids }, g);
+    if (
+      guestCount !== g.guestCount ||
+      kids !== g.kids ||
+      church.guestCount !== g.churchCount ||
+      church.kids !== g.churchKids
+    ) {
+      await prisma.guest.update({
+        where: { id: g.id },
+        data: { guestCount, kids, churchCount: church.guestCount, churchKids: church.kids },
+      });
       fixed++;
     }
   }
   if (fixed > 0) console.log(`Trimmed ${fixed} answer(s) back to the invited capacity.`);
+}
+
+/**
+ * Answers given before the day was split in two said one thing: "we are
+ * coming". That meant the whole day, so a household already confirmed keeps its
+ * numbers at the church too, rather than silently turning up as nobody.
+ */
+async function backfillChurch() {
+  const guests = await prisma.guest.findMany({
+    where: { status: "ATTENDING", churchCount: 0, guestCount: { gt: 0 } },
+  });
+  for (const g of guests) {
+    await prisma.guest.update({
+      where: { id: g.id },
+      data: { churchCount: g.guestCount, churchKids: g.kids },
+    });
+  }
+  const undecided = await prisma.attendee.findMany({
+    where: { church: "PENDING", reception: { not: "PENDING" } },
+  });
+  for (const a of undecided) {
+    await prisma.attendee.update({ where: { id: a.id }, data: { church: a.reception } });
+  }
+  if (guests.length > 0 || undecided.length > 0) {
+    console.log(`Carried ${guests.length} household answer(s) over to the church.`);
+  }
 }
 
 async function main() {
@@ -98,12 +133,15 @@ async function main() {
         likely: g.likely,
         maxGuests: g.guestCount,
         maxKids: g.kids,
+        churchCount: g.guestCount,
+        churchKids: g.kids,
         guestCount: g.guestCount,
         kids: g.kids,
       },
     });
   }
 
+  await backfillChurch();
   await clampToCapacity();
 
   const total = await prisma.guest.count();

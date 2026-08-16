@@ -35,12 +35,18 @@ export async function saveAttendeeSlots(
     ...slots.map((slot) =>
       prisma.attendee.upsert({
         where: { guestCode_position: { guestCode, position: slot.position } },
-        update: { name: slot.name, status: slot.status, allergies: slot.allergies },
+        update: {
+          name: slot.name,
+          church: slot.church,
+          reception: slot.reception,
+          allergies: slot.allergies,
+        },
         create: {
           guestCode,
           position: slot.position,
           name: slot.name,
-          status: slot.status,
+          church: slot.church,
+          reception: slot.reception,
           allergies: slot.allergies,
         },
       })

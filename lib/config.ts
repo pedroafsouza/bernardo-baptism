@@ -14,11 +14,11 @@ export const EVENT = {
   ceremonyTime: "Lørdag den 3. oktober 2026 kl. 11:00",
   ceremonyTimeEn: "Saturday 3 October 2026 at 11:00",
   ceremonyTimePt: "Sábado, 3 de outubro de 2026, às 11:00",
-  ceremonyPlace: "Filips kirke, Kastrupvej 55, 2300 København",
+  ceremonyPlace: "Filips Kirke, Kastrupvej 55, 2300 København",
   receptionTime: "Efterfølgende",
   receptionTimeEn: "Straight after the ceremony",
   receptionTimePt: "Logo após a cerimônia",
-  receptionPlace: "Bella Uno, festlokale A+B, Emma Gads Vej 28, 2300 København",
+  receptionPlace: "Little House Amager, Lindgreens Allé 1, 2300 København",
 };
 
 export type GuestStatus = "PENDING" | "ATTENDING" | "DECLINED";

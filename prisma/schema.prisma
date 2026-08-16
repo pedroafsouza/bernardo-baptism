@@ -30,16 +30,16 @@ model AdminUser {
 /// One logged-in browser. Only the SHA-256 of the cookie token is stored, so a
 /// database leak cannot be replayed as a live session.
 model AdminSession {
-  id        String    @id @default(uuid())
-  tokenHash String    @unique
-  adminId   String
-  admin     AdminUser @relation(fields: [adminId], references: [id], onDelete: Cascade)
-  ip        String?
-  userAgent String?
-  createdAt DateTime  @default(now())
-  lastSeenAt DateTime @default(now())
-  expiresAt DateTime
-  revokedAt DateTime?
+  id         String    @id @default(uuid())
+  tokenHash  String    @unique
+  adminId    String
+  admin      AdminUser @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime  @default(now())
+  lastSeenAt DateTime  @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
 
   @@index([adminId])
   @@index([expiresAt])
@@ -65,41 +65,46 @@ model AuditLog {
 }
 
 model Guest {
-  id         String   @id @default(uuid())
-  guestCode  String   @unique
-  name       String
-  group      String
-  status     String   @default("PENDING")
+  id            String    @id @default(uuid())
+  guestCode     String    @unique
+  name          String
+  group         String
+  status        String    @default("PENDING")
   /// How many adults and children this household is invited to bring. The RSVP
   /// form never offers more than this, and `maxKids = 0` means the invitation
   /// simply has no room for children — the picker is not shown at all.
-  maxGuests  Int      @default(1)
-  maxKids    Int      @default(0)
-  /// What the household actually confirmed. Always within the maximums above,
-  /// so the final head count can never include a child nobody was invited to
-  /// bring. `guestCount` is derived from the individual answers in `attendees`
-  /// — it stays here because the head count, the admin table and the CSV all
-  /// read it, and it must agree with who actually said yes.
-  guestCount Int      @default(1)
-  kids       Int      @default(0)
+  maxGuests     Int       @default(1)
+  maxKids       Int       @default(0)
+  /// What the household actually confirmed for the reception — the numbers the
+  /// caterer works from, which is why they keep the plain names the head count,
+  /// the admin table and the CSV already read. Always within the maximums
+  /// above, and derived from the individual answers in `attendees`, so they
+  /// always agree with who actually said yes.
+  guestCount    Int       @default(1)
+  kids          Int       @default(0)
+  /// The same two numbers for the church. The day is two invitations in one:
+  /// somebody can come to the ceremony and not to the party, or the other way
+  /// round, so each part is counted on its own.
+  churchCount   Int       @default(0)
+  churchKids    Int       @default(0)
   /// Allergies and dietary needs for the children in the party. Children are
   /// counted, not named, so one shared note covers them all.
-  kidsAllergies String @default("")
-  likely     Boolean  @default(true)
-  inviteSent Boolean  @default(false)
-  inviteSentAt DateTime?
-  bones      Int      @default(0)
-  blessings  Int      @default(0)
-  score      Int      @default(0)
+  kidsAllergies String    @default("")
+  likely        Boolean   @default(true)
+  inviteSent    Boolean   @default(false)
+  inviteSentAt  DateTime?
+  bones         Int       @default(0)
+  blessings     Int       @default(0)
+  score         Int       @default(0)
   /// Every distinct daily bone this household has ever picked up. Unlike
   /// `bones`, which is the best single run, this only ever grows — it is the
   /// standing of the day-by-day bone competition.
-  bonesTotal Int      @default(0)
-  playedAt   DateTime?
-  updatedAt  DateTime @updatedAt
-  createdAt  DateTime @default(now())
+  bonesTotal    Int       @default(0)
+  playedAt      DateTime?
+  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime  @default(now())
 
-  attendees  Attendee[]
+  attendees Attendee[]
 }
 
 /// One named adult on an invitation.
@@ -117,8 +122,11 @@ model Attendee {
   /// answer survives a re-render and follows the name it was given for.
   position  Int
   name      String
-  /// `PENDING` until this person is answered for, then `ATTENDING`/`DECLINED`.
-  status    String   @default("PENDING")
+  /// One answer per part of the day, each `PENDING` until it is given and then
+  /// `ATTENDING`/`DECLINED`. They are asked separately because they are
+  /// separate invitations: the ceremony and the party afterwards.
+  church    String   @default("PENDING")
+  reception String   @default("PENDING")
   /// Free text, empty when there is nothing to declare.
   allergies String   @default("")
   updatedAt DateTime @updatedAt

@@ -10,6 +10,7 @@ import {
   summarizeAttendees,
   MAX_ALLERGY_LENGTH,
   type AttendeeSlot,
+  type Party,
 } from "@/lib/attendees";
 import { loadAttendeeSlots, saveAttendeeSlots } from "@/lib/attendeeStore";
 import { demoGuest, isDemoCode } from "@/lib/demo";
@@ -37,11 +38,21 @@ function safeAllergies(value: unknown): string {
   return safeString(trimmed, { max: MAX_ALLERGY_LENGTH }) ?? "";
 }
 
-type PostedAttendee = { position?: unknown; attending?: unknown; allergies?: unknown };
+type PostedAttendee = {
+  position?: unknown;
+  church?: unknown;
+  reception?: unknown;
+  allergies?: unknown;
+};
+
+function answer(value: unknown) {
+  return value ? ("ATTENDING" as const) : ("DECLINED" as const);
+}
 
 /**
  * Lays the posted answers onto the invitation's real people. Positions we do
- * not know are ignored, so the payload can never add a guest.
+ * not know are ignored, so the payload can never add a guest. Allergies belong
+ * to the meal, so they are only kept for someone staying for the party.
  */
 function applyAnswers(slots: AttendeeSlot[], posted: PostedAttendee[]): AttendeeSlot[] {
   const byPosition = new Map<number, PostedAttendee>();
@@ -51,14 +62,35 @@ function applyAnswers(slots: AttendeeSlot[], posted: PostedAttendee[]): Attendee
   }
 
   return slots.map((slot) => {
-    const answer = byPosition.get(slot.position);
-    if (!answer) return slot;
+    const posted = byPosition.get(slot.position);
+    if (!posted) return slot;
     return {
       ...slot,
-      status: answer.attending ? ("ATTENDING" as const) : ("DECLINED" as const),
-      allergies: answer.attending ? safeAllergies(answer.allergies) : "",
+      church: answer(posted.church),
+      reception: answer(posted.reception),
+      allergies: posted.reception ? safeAllergies(posted.allergies) : "",
     };
   });
+}
+
+/**
+ * Trims an answer to what the invitation seats — each half of the day on its
+ * own, since an invitation for two is an invitation for two at both.
+ */
+function fits(answered: Party, capacity: { maxGuests?: number; maxKids?: number }): Party {
+  const church = clampParty(
+    { guestCount: answered.churchCount, kids: answered.churchKids },
+    capacity,
+    { attending: answered.churchCount > 0 }
+  );
+  const reception = clampParty(answered, capacity, { attending: answered.guestCount > 0 });
+  return {
+    churchCount: church.guestCount,
+    churchKids: church.kids,
+    guestCount: reception.guestCount,
+    kids: reception.kids,
+    status: answered.status,
+  };
 }
 
 export async function POST(req: NextRequest) {
@@ -70,6 +102,7 @@ export async function POST(req: NextRequest) {
       guestCode?: unknown;
       status?: unknown;
       guestCount?: unknown;
+      churchKids?: unknown;
       kids?: unknown;
       kidsAllergies?: unknown;
       attendees?: unknown;
@@ -103,6 +136,12 @@ export async function POST(req: NextRequest) {
     }
 
     const kidsAllergies = safeAllergies(body.data.kidsAllergies);
+    // Children are counted for each half of the day: some families come to the
+    // church with everyone and leave the little ones at home for the evening.
+    const postedKids = {
+      church: safeInt(body.data.churchKids, 0, 10, 0),
+      reception: safeInt(body.data.kids, 0, 10, 0),
+    };
 
     // The demo invitation goes through the whole flow but is never stored.
     if (isDemoCode(guestCode)) {
@@ -111,12 +150,11 @@ export async function POST(req: NextRequest) {
         ? applyAnswers(attendeeSlots(guest), posted)
         : attendeeSlots(guest).map((s) => ({
             ...s,
-            status: status === "ATTENDING" ? ("ATTENDING" as const) : ("DECLINED" as const),
+            church: answer(status === "ATTENDING"),
+            reception: answer(status === "ATTENDING"),
           }));
-      const answered = partyFromAttendees(slots, safeInt(body.data.kids, 0, 10, 0));
-      const party = clampParty(answered, guest, {
-        attending: answered.status === "ATTENDING",
-      });
+      const answered = partyFromAttendees(slots, postedKids);
+      const party = fits(answered, guest);
       return NextResponse.json({
         ok: true,
         demo: true,
@@ -140,30 +178,29 @@ export async function POST(req: NextRequest) {
     } else {
       // A household-level answer applies to everyone on the invitation, and an
       // adult who is not coming is not carrying an allergy note either.
-      const all = status === "ATTENDING" ? ("ATTENDING" as const) : ("DECLINED" as const);
+      const all = answer(status === "ATTENDING");
       const wanted = safeInt(body.data.guestCount, 0, 10, 1);
-      slots = (await loadAttendeeSlots(existing)).map((slot, i) => ({
-        ...slot,
-        status: all === "ATTENDING" && i >= wanted ? ("DECLINED" as const) : all,
-        allergies: all === "ATTENDING" && i < wanted ? slot.allergies : "",
-      }));
+      slots = (await loadAttendeeSlots(existing)).map((slot, i) => {
+        const coming = all === "ATTENDING" && i < wanted ? ("ATTENDING" as const) : ("DECLINED" as const);
+        return { ...slot, church: coming, reception: coming, allergies: coming === "ATTENDING" ? slot.allergies : "" };
+      });
     }
 
-    const answered = partyFromAttendees(slots, safeInt(body.data.kids, 0, 10, 0));
+    const answered = partyFromAttendees(slots, postedKids);
     // The invitation's capacity is the ceiling, and it is enforced here rather
     // than only in the form: a household invited without children cannot end up
     // in the final head count with children, whatever is posted.
-    const { guestCount: safeCount, kids: safeKids } = clampParty(answered, existing, {
-      attending: answered.status === "ATTENDING",
-    });
+    const party = fits(answered, existing);
 
     const guest = await prisma.guest.update({
       where: { guestCode },
       data: {
         status: answered.status,
-        guestCount: safeCount,
-        kids: safeKids,
-        kidsAllergies: safeKids > 0 ? kidsAllergies : "",
+        churchCount: party.churchCount,
+        churchKids: party.churchKids,
+        guestCount: party.guestCount,
+        kids: party.kids,
+        kidsAllergies: party.kids > 0 ? kidsAllergies : "",
       },
     });
     await saveAttendeeSlots(guestCode, slots);
@@ -173,7 +210,7 @@ export async function POST(req: NextRequest) {
       actorName: guest.name,
       targetType: "guest",
       targetId: guest.guestCode,
-      detail: `${answered.status} · ${safeCount} adults · ${safeKids} kids · ${summarizeAttendees(slots)}`,
+      detail: `${answered.status} · church ${party.churchCount}+${party.churchKids} · party ${party.guestCount}+${party.kids} · ${summarizeAttendees(slots)}`,
       req,
     });
 

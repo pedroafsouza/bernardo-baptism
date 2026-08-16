@@ -26,6 +26,8 @@ type Guest = {
   guestCode: string;
   name: string;
   status: string;
+  churchCount?: number;
+  churchKids?: number;
   guestCount: number;
   kids: number;
   kidsAllergies?: string;

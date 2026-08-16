@@ -16,6 +16,8 @@ export type DemoGuest = {
   guestCode: string;
   name: string;
   status: string;
+  churchCount: number;
+  churchKids: number;
   guestCount: number;
   kids: number;
   kidsAllergies: string;
@@ -34,6 +36,8 @@ export function demoGuest(overrides: Partial<DemoGuest> = {}): DemoGuest {
     // one invitation, answered person by person.
     name: "Demo and Friend",
     status: "PENDING",
+    churchCount: 2,
+    churchKids: 0,
     guestCount: 2,
     kids: 0,
     kidsAllergies: "",

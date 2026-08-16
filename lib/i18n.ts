@@ -98,6 +98,13 @@ type Dict = {
   stepInvitation: string;
   whoIsComing: string;
   whoIsComingHint: string;
+  /** The day is answered in two halves: the ceremony and the party after it. */
+  partChurch: string;
+  partReception: string;
+  churchHint: string;
+  receptionHint: string;
+  nobodyComing: string;
+  comingCount: (adults: number, kids: number) => string;
   comingYes: string;
   comingNo: string;
   allergiesTitle: string;
@@ -223,6 +230,15 @@ const da: Dict = {
   stepInvitation: "Invitationen",
   whoIsComing: "Hvem kommer?",
   whoIsComingHint: "Svar for hver enkelt — I behøver ikke komme alle sammen.",
+  partChurch: "I kirken",
+  partReception: "Til festen",
+  churchHint: "Hvem kommer med til selve dåben?",
+  receptionHint: "Og hvem bliver med til festen bagefter?",
+  nobodyComing: "Ingen fra denne invitation",
+  comingCount: (adults, kids) =>
+    kids > 0
+      ? `${adults} ${adults === 1 ? "voksen" : "voksne"} og ${kids} ${kids === 1 ? "barn" : "børn"}`
+      : `${adults} ${adults === 1 ? "voksen" : "voksne"}`,
   comingYes: "Kommer",
   comingNo: "Kan ikke",
   allergiesTitle: "Allergi & kost",
@@ -231,7 +247,7 @@ const da: Dict = {
   allergiesNone: "Ingen angivet",
   kidsAllergiesTitle: "Allergi & kost for børnene",
   kidsUnderOne: "Børn tæller kun med, hvis de er fyldt 1 år.",
-  answerEveryone: "Svar venligst for alle på invitationen.",
+  answerEveryone: "Svar venligst for alle — både til kirken og til festen.",
   sendReply: "Send svar",
   attendingNames: (n) => `Kommer: ${n}`,
   decliningNames: (n) => `Kan ikke: ${n}`,
@@ -349,6 +365,15 @@ const en: Dict = {
   stepInvitation: "The invitation",
   whoIsComing: "Who is coming?",
   whoIsComingHint: "Answer for each person — you don't all have to come.",
+  partChurch: "At the church",
+  partReception: "At the party",
+  churchHint: "Who is coming to the christening itself?",
+  receptionHint: "And who is staying for the party afterwards?",
+  nobodyComing: "Nobody from this invitation",
+  comingCount: (adults, kids) =>
+    kids > 0
+      ? `${adults} adult${adults === 1 ? "" : "s"} and ${kids} child${kids === 1 ? "" : "ren"}`
+      : `${adults} adult${adults === 1 ? "" : "s"}`,
   comingYes: "Coming",
   comingNo: "Can't",
   allergiesTitle: "Allergies & diet",
@@ -357,7 +382,7 @@ const en: Dict = {
   allergiesNone: "None given",
   kidsAllergiesTitle: "Allergies & diet for the children",
   kidsUnderOne: "Children only count if they are older than 1 year.",
-  answerEveryone: "Please answer for everyone on the invitation.",
+  answerEveryone: "Please answer for everyone — for the church and for the party.",
   sendReply: "Send reply",
   attendingNames: (n) => `Coming: ${n}`,
   decliningNames: (n) => `Can't make it: ${n}`,
@@ -475,6 +500,15 @@ const pt: Dict = {
   stepInvitation: "O convite",
   whoIsComing: "Quem vem?",
   whoIsComingHint: "Responda por cada pessoa — não precisam vir todos.",
+  partChurch: "Na igreja",
+  partReception: "Na festa",
+  churchHint: "Quem vem ao batizado?",
+  receptionHint: "E quem fica para a festa depois?",
+  nobodyComing: "Ninguém deste convite",
+  comingCount: (adults, kids) =>
+    kids > 0
+      ? `${adults} adulto${adults === 1 ? "" : "s"} e ${kids} criança${kids === 1 ? "" : "s"}`
+      : `${adults} adulto${adults === 1 ? "" : "s"}`,
   comingYes: "Vou",
   comingNo: "Não posso",
   allergiesTitle: "Alergias & dieta",
@@ -483,7 +517,7 @@ const pt: Dict = {
   allergiesNone: "Nada informado",
   kidsAllergiesTitle: "Alergias & dieta das crianças",
   kidsUnderOne: "As crianças só contam se tiverem mais de 1 ano.",
-  answerEveryone: "Responda por todas as pessoas do convite, por favor.",
+  answerEveryone: "Responda por todas as pessoas — para a igreja e para a festa.",
   sendReply: "Enviar resposta",
   attendingNames: (n) => `Vem: ${n}`,
   decliningNames: (n) => `Não pode: ${n}`,

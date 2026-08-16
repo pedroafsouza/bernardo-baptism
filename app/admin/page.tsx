@@ -9,7 +9,7 @@ import AdminsPanel from "@/components/admin/AdminsPanel";
 import AuditPanel from "@/components/admin/AuditPanel";
 import PasswordChangeGate from "@/components/admin/PasswordChangeGate";
 import { copyText } from "@/lib/clipboard";
-import { headcount } from "@/lib/capacity";
+import { clampParty, headcount } from "@/lib/capacity";
 import {
   summarizeAllergies,
   summarizeAttendees,
@@ -31,6 +31,9 @@ type Guest = {
   status: string;
   maxGuests: number;
   maxKids: number;
+  /** The christening and the party are answered — and counted — separately. */
+  churchCount: number;
+  churchKids: number;
   guestCount: number;
   kids: number;
   kidsAllergies: string;
@@ -54,6 +57,8 @@ const emptyForm = {
   status: "PENDING",
   maxGuests: 1,
   maxKids: 0,
+  churchCount: 1,
+  churchKids: 0,
   guestCount: 1,
   kids: 0,
   likely: true,
@@ -272,6 +277,8 @@ function AdminPageInner() {
       status: g.status,
       maxGuests: g.maxGuests,
       maxKids: g.maxKids,
+      churchCount: g.churchCount,
+      churchKids: g.churchKids,
       guestCount: g.guestCount,
       kids: g.kids,
       likely: g.likely,
@@ -352,6 +359,15 @@ function AdminPageInner() {
     // capacity was tightened can never inflate the totals, and a household
     // invited without children never contributes any.
     const { adults, kids } = headcount(guests);
+    // The church has its own head count: a godparent who cannot stay for dinner
+    // still needs a seat at the christening.
+    const church = attending.reduce(
+      (sum, g) => {
+        const fits = clampParty({ guestCount: g.churchCount, kids: g.churchKids }, g);
+        return { adults: sum.adults + fits.guestCount, kids: sum.kids + fits.kids };
+      },
+      { adults: 0, kids: 0 }
+    );
     const withAllergies = guests.filter(
       (g) => summarizeAllergies(g.attendees ?? [], g.kidsAllergies ?? "").length > 0
     ).length;
@@ -363,6 +379,9 @@ function AdminPageInner() {
       adults,
       kids,
       attendeeCount: adults + kids,
+      churchAdults: church.adults,
+      churchKids: church.kids,
+      churchCount: church.adults + church.kids,
       declined,
       pending,
       played,
@@ -373,14 +392,15 @@ function AdminPageInner() {
 
   function exportCsv() {
     const header = [
-      "guestCode", "name", "group", "status", "maxGuests", "maxKids", "guestCount", "kids", "likely",
+      "guestCode", "name", "group", "status", "maxGuests", "maxKids",
+      "churchCount", "churchKids", "guestCount", "kids", "likely",
       "people", "allergies",
       "inviteSent", "inviteSentAt", "bones", "blessings", "score", "playedAt", "updatedAt",
     ];
     const rows = guests.map((g) =>
       [
         g.guestCode, g.name, g.group, g.status, g.maxGuests, g.maxKids,
-        g.guestCount, g.kids, g.likely,
+        g.churchCount, g.churchKids, g.guestCount, g.kids, g.likely,
         summarizeAttendees(g.attendees ?? []),
         summarizeAllergies(g.attendees ?? [], g.kidsAllergies ?? ""),
         g.inviteSent, g.inviteSentAt ?? "",
@@ -586,7 +606,16 @@ function AdminPageInner() {
           </div>
           <div>
             <div className="text-[14px] opacity-70 mb-1 flex items-center gap-2">
-              <Icon name="celebrate" /> {t.totalPeople}
+              <Icon name="church" /> {t.atChurch}
+            </div>
+            <div className="text-xl sm:text-2xl">{metrics.churchCount}</div>
+            <div className="text-[13px] opacity-70 mt-1">
+              {t.adultsKids(metrics.churchAdults, metrics.churchKids)}
+            </div>
+          </div>
+          <div>
+            <div className="text-[14px] opacity-70 mb-1 flex items-center gap-2">
+              <Icon name="celebrate" /> {t.atReception}
             </div>
             <div className="text-xl sm:text-2xl">{metrics.attendeeCount}</div>
             <div className="text-[13px] opacity-70 mt-1">
@@ -777,6 +806,7 @@ function AdminPageInner() {
                 ...form,
                 maxGuests,
                 guestCount: Math.min(form.guestCount, Math.max(maxGuests, 0)),
+                churchCount: Math.min(form.churchCount, Math.max(maxGuests, 0)),
               });
             }}
             title={t.maxAdults}
@@ -794,11 +824,33 @@ function AdminPageInner() {
                 ...form,
                 maxKids,
                 kids: Math.min(form.kids, Math.max(maxKids, 0)),
+                churchKids: Math.min(form.churchKids, Math.max(maxKids, 0)),
               });
             }}
             title={t.maxKids}
             placeholder={t.maxKids}
             className="border-4 border-black p-2 text-[14px]"
+          />
+          <input
+            type="number"
+            min={0}
+            max={form.maxGuests}
+            value={form.churchCount}
+            onChange={(e) => setForm({ ...form, churchCount: Number(e.target.value) })}
+            title={t.churchAdults}
+            placeholder={t.churchAdults}
+            className="border-4 border-black p-2 text-[14px]"
+          />
+          <input
+            type="number"
+            min={0}
+            max={form.maxKids}
+            value={form.churchKids}
+            onChange={(e) => setForm({ ...form, churchKids: Number(e.target.value) })}
+            title={t.churchKids}
+            placeholder={t.churchKids}
+            disabled={form.maxKids === 0}
+            className="border-4 border-black p-2 text-[14px] disabled:opacity-50"
           />
           <input
             type="number"
@@ -920,7 +972,7 @@ function AdminPageInner() {
               <tr>
                 {[
                   t.colSent, t.colCode, t.colName, t.colGroup, t.colStatus,
-                  t.adults, t.kids, t.colScore, t.colActions,
+                  t.atChurch, t.adults, t.kids, t.colScore, t.colActions,
                 ].map((h) => (
                   <th key={h} className="p-2 text-left border-b-4 border-black">
                     {h}
@@ -1006,6 +1058,21 @@ function AdminPageInner() {
                       {g.status}
                     </span>
                   </td>
+                  <td className="p-2 text-center" title={t.atChurch}>
+                    <span className="inline-flex items-center gap-2">
+                      <span>
+                        {g.churchCount}
+                        <span className="opacity-40">/{g.maxGuests}</span>
+                      </span>
+                      {g.maxKids > 0 && (
+                        <span className="inline-flex items-center gap-1">
+                          <Icon name="child" className="h-4 w-4 shrink-0 opacity-70" />
+                          {g.churchKids}
+                          <span className="opacity-40">/{g.maxKids}</span>
+                        </span>
+                      )}
+                    </span>
+                  </td>
                   <td className="p-2 text-center" title={t.ofMax(g.maxGuests)}>
                     {g.guestCount}
                     <span className="opacity-40">/{g.maxGuests}</span>
@@ -1067,7 +1134,7 @@ function AdminPageInner() {
                 </tr>
                 {expanded && (
                   <tr className="border-b-2 border-black/10 bg-pastel-cream">
-                    <td colSpan={9} className="p-3">
+                    <td colSpan={10} className="p-3">
                       <div className="text-[13px] flex flex-col gap-2">
                         <div className="flex items-center gap-2 font-bold">
                           <Icon name="guests" className="h-4 w-4 shrink-0" />
@@ -1079,34 +1146,42 @@ function AdminPageInner() {
                               key={person.position}
                               className="flex flex-wrap items-center gap-2"
                             >
-                              <span
-                                className={`inline-flex items-center gap-1 border-2 border-black px-2 py-0.5 ${
-                                  person.status === "ATTENDING"
-                                    ? "bg-pastel-green"
-                                    : person.status === "DECLINED"
-                                    ? "bg-pastel-pink"
-                                    : "bg-pastel-yellow"
-                                }`}
-                              >
-                                <Icon
-                                  name={
-                                    person.status === "ATTENDING"
-                                      ? "attending"
-                                      : person.status === "DECLINED"
-                                      ? "declined"
-                                      : "pending"
-                                  }
-                                  className="h-4 w-4 shrink-0"
-                                />
-                                {person.status === "ATTENDING"
-                                  ? t.personAttending
-                                  : person.status === "DECLINED"
-                                  ? t.personDeclined
-                                  : t.personPending}
-                              </span>
-                              <span>{person.name}</span>
-                              {/* Only somebody who is coming eats with us. */}
-                              {person.status === "ATTENDING" && (
+                              <span className="min-w-[8rem]">{person.name}</span>
+                              {/* Each half of the day is answered on its own. */}
+                              {([
+                                [t.atChurch, person.church],
+                                [t.atReception, person.reception],
+                              ] as const).map(([label, said]) => (
+                                <span
+                                  key={label}
+                                  className={`inline-flex items-center gap-1 border-2 border-black px-2 py-0.5 ${
+                                    said === "ATTENDING"
+                                      ? "bg-pastel-green"
+                                      : said === "DECLINED"
+                                      ? "bg-pastel-pink"
+                                      : "bg-pastel-yellow"
+                                  }`}
+                                >
+                                  <Icon
+                                    name={
+                                      said === "ATTENDING"
+                                        ? "attending"
+                                        : said === "DECLINED"
+                                        ? "declined"
+                                        : "pending"
+                                    }
+                                    className="h-4 w-4 shrink-0"
+                                  />
+                                  {label}:{" "}
+                                  {said === "ATTENDING"
+                                    ? t.personAttending
+                                    : said === "DECLINED"
+                                    ? t.personDeclined
+                                    : t.personPending}
+                                </span>
+                              ))}
+                              {/* Only somebody staying for the meal eats with us. */}
+                              {person.reception === "ATTENDING" && (
                                 <span className="opacity-70">
                                   {t.allergies}:{" "}
                                   {person.allergies.trim() || t.noAllergies}
@@ -1119,7 +1194,8 @@ function AdminPageInner() {
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="inline-flex items-center gap-1 border-2 border-black bg-white px-2 py-0.5">
                               <Icon name="child" className="h-4 w-4 shrink-0" />
-                              {t.kidsAllergies}: {g.kids}
+                              {t.kidsAllergies}: {t.atChurch} {g.churchKids} · {t.atReception}{" "}
+                              {g.kids}
                             </span>
                             {g.kids > 0 && (
                               <span className="opacity-70">
@@ -1138,7 +1214,7 @@ function AdminPageInner() {
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="p-4 text-center opacity-60">
+                  <td colSpan={10} className="p-4 text-center opacity-60">
                     {t.noGuestsMatch}
                   </td>
                 </tr>
