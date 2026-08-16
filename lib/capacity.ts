@@ -42,6 +42,33 @@ export function clampParty(
 export type Attendee = Party & Capacity & { status: string };
 
 /**
+ * How many people have been invited at all — every seat on every invitation,
+ * whatever anybody has answered.
+ *
+ * This is the counterpart to `headcount`: that one is who is coming, this one
+ * is who was asked. Capacities are normalized on the way in, so a household
+ * stored with a nonsensical maximum still counts as the one adult an
+ * invitation always seats.
+ */
+export function invitedHeadcount(guests: Partial<Capacity>[]): {
+  adults: number;
+  kids: number;
+  total: number;
+} {
+  let adults = 0;
+  let kids = 0;
+
+  for (const guest of guests) {
+    const { maxGuests, maxKids } = normalizeCapacity(guest);
+    adults += maxGuests;
+    kids += maxKids;
+  }
+
+  return { adults, kids, total: adults + kids };
+}
+
+
+/**
  * The final head count. Answers stored before a capacity was tightened are
  * trimmed here too, so the caterer never gets a number the invitations do not
  * support.

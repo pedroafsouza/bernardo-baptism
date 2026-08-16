@@ -1,7 +1,12 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 
-import { clampParty, headcount, normalizeCapacity } from "../lib/capacity";
+import {
+  clampParty,
+  headcount,
+  invitedHeadcount,
+  normalizeCapacity,
+} from "../lib/capacity";
 
 const invite = (maxGuests: number, maxKids: number) => ({ maxGuests, maxKids });
 
@@ -77,4 +82,22 @@ test("an answer given before the invitation shrank is trimmed in the totals", ()
 
 test("an empty guest list counts nobody", () => {
   assert.deepEqual(headcount([]), { adults: 0, kids: 0, total: 0 });
+});
+
+test("everybody invited is counted, whatever they answered", () => {
+  const guests = [
+    { maxGuests: 2, maxKids: 1 },
+    { maxGuests: 1, maxKids: 0 },
+    { maxGuests: 4, maxKids: 3 },
+  ];
+  assert.deepEqual(invitedHeadcount(guests), { adults: 7, kids: 4, total: 11 });
+});
+
+test("a household with a nonsensical maximum still seats its one adult", () => {
+  assert.deepEqual(invitedHeadcount([{ maxGuests: 0, maxKids: -2 }]), {
+    adults: 1,
+    kids: 0,
+    total: 1,
+  });
+  assert.deepEqual(invitedHeadcount([]), { adults: 0, kids: 0, total: 0 });
 });

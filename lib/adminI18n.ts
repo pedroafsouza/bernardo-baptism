@@ -52,6 +52,7 @@ export type AdminDict = {
 
   // metric cards
   invitedHouseholds: string;
+  invitedPeople: string;
   confirmed: string;
   declined: string;
   awaitingReply: string;
@@ -104,6 +105,20 @@ export type AdminDict = {
   update: string;
   add: string;
   cancel: string;
+
+  // the printable report of who is coming
+  report: string;
+  reportTitle: string;
+  reportIntro: string;
+  print: string;
+  backToPanel: string;
+  onlyComing: string;
+  everyone: string;
+  printedOn: (date: string) => string;
+  nobodyComing: string;
+  colHousehold: string;
+  colPerson: string;
+  childrenLine: (n: number) => string;
 
   // filters
   allGroups: string;
@@ -389,6 +404,7 @@ const da: AdminDict = {
   sendProgress: "Udsendelses-fremdrift",
 
   invitedHouseholds: "Inviterede husstande",
+  invitedPeople: "Inviterede personer",
   confirmed: "Bekræftet",
   declined: "Afbud",
   awaitingReply: "Afventer svar",
@@ -437,6 +453,19 @@ const da: AdminDict = {
   update: "Opdater",
   add: "Tilføj",
   cancel: "Annuller",
+
+  report: "Rapport",
+  reportTitle: "Hvem kommer",
+  reportIntro: "Til udskrift og til at rette et enkelt svar undervejs.",
+  print: "Udskriv",
+  backToPanel: "Tilbage til panelet",
+  onlyComing: "Kun dem der kommer",
+  everyone: "Alle",
+  printedOn: (date) => `Udskrevet ${date}`,
+  nobodyComing: "Ingen har sagt ja endnu.",
+  colHousehold: "Husstand",
+  colPerson: "Person",
+  childrenLine: (n) => `${n} børn`,
 
   allGroups: "Alle grupper",
   allStatuses: "Alle statusser",
@@ -618,6 +647,7 @@ const en: AdminDict = {
   sendProgress: "Sending progress",
 
   invitedHouseholds: "Invited households",
+  invitedPeople: "Invited people",
   confirmed: "Confirmed",
   declined: "Declined",
   awaitingReply: "Awaiting reply",
@@ -666,6 +696,19 @@ const en: AdminDict = {
   update: "Update",
   add: "Add",
   cancel: "Cancel",
+
+  report: "Report",
+  reportTitle: "Who is coming",
+  reportIntro: "For printing, and for correcting a single answer along the way.",
+  print: "Print",
+  backToPanel: "Back to the panel",
+  onlyComing: "Only those coming",
+  everyone: "Everyone",
+  printedOn: (date) => `Printed ${date}`,
+  nobodyComing: "Nobody has said yes yet.",
+  colHousehold: "Household",
+  colPerson: "Person",
+  childrenLine: (n) => `${n} children`,
 
   allGroups: "All groups",
   allStatuses: "All statuses",

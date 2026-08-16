@@ -123,3 +123,23 @@ select,
     animation: none;
   }
 }
+
+/* The guest report is meant to leave the screen. On paper the pastel fills,
+   the raised borders and the answer buttons are noise — what matters is that
+   the names are legible in ink and that a household is never split across two
+   sheets. */
+@media print {
+  html,
+  body {
+    background: #fff;
+  }
+
+  .pixel-border {
+    box-shadow: none;
+  }
+
+  .print-keep {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

@@ -65,6 +65,7 @@ import {
   Eye,
   CalendarClock,
   ExternalLink,
+  Printer,
   type LucideIcon,
 } from "lucide-react";
 
@@ -128,6 +129,7 @@ export const ICONS = {
   source: Link2,
   deadline: CalendarClock,
   external: ExternalLink,
+  print: Printer,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

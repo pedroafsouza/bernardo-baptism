@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import { GROUPS, STATUSES } from "@/lib/config";
+import Link from "next/link";
 import Icon, { type IconName } from "@/components/Icon";
 import InviteMessageModal from "@/components/admin/InviteMessageModal";
 import DangerZone from "@/components/admin/DangerZone";
@@ -18,7 +19,7 @@ import AuditPanel from "@/components/admin/AuditPanel";
 import VisitsPanel from "@/components/admin/VisitsPanel";
 import PasswordChangeGate from "@/components/admin/PasswordChangeGate";
 import { copyText } from "@/lib/clipboard";
-import { clampParty, headcount } from "@/lib/capacity";
+import { clampParty, headcount, invitedHeadcount } from "@/lib/capacity";
 import {
   summarizeAllergies,
   summarizeAttendees,
@@ -31,36 +32,16 @@ import {
   type AdminLang,
 } from "@/lib/adminI18n";
 import { MESSAGE_LANGS, type MessageLang } from "@/lib/invite";
+import AnswerButtons from "@/components/admin/AnswerButtons";
+import {
+  fetchGuests,
+  saveAnswers as putAnswers,
+  type AdminGuest as Guest,
+} from "@/lib/adminGuests";
 import GuestFormModal, {
   emptyGuestForm,
   type GuestFormValues,
 } from "@/components/admin/GuestFormModal";
-
-type Guest = {
-  id: string;
-  guestCode: string;
-  name: string;
-  group: string;
-  status: string;
-  maxGuests: number;
-  maxKids: number;
-  /** The christening and the party are answered — and counted — separately. */
-  churchCount: number;
-  churchKids: number;
-  guestCount: number;
-  kids: number;
-  kidsAllergies: string;
-  /** Who is on this invitation and what each of them answered. */
-  attendees: AttendeeSlot[];
-  likely: boolean;
-  inviteSent: boolean;
-  inviteSentAt: string | null;
-  bones: number;
-  blessings: number;
-  score: number;
-  playedAt: string | null;
-  updatedAt: string;
-};
 
 type AdminIdentity = {
   id: string;
@@ -179,22 +160,18 @@ function AdminPageInner() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/guests", { credentials: "same-origin" });
-      if (res.status === 401) {
-        setAdmin(null);
-        return false;
-      }
-      if (res.status === 403) {
+      const result = await fetchGuests();
+      if (!result.ok) {
+        if (result.reason === "UNAUTHORIZED") setAdmin(null);
         // Temporary password: the panel is locked to the password screen.
-        setAdmin((a) => (a ? { ...a, mustChangePassword: true } : a));
+        if (result.reason === "PASSWORD_CHANGE_REQUIRED") {
+          setAdmin((a) => (a ? { ...a, mustChangePassword: true } : a));
+        }
+        if (result.reason === "FAILED") setError(t.couldNotLoad);
         return false;
       }
-      const data = await res.json();
-      putGuests(() => data.guests || []);
+      putGuests(() => result.guests);
       return true;
-    } catch (e: any) {
-      setError(e.message || t.couldNotLoad);
-      return false;
     } finally {
       setLoading(false);
       setChecking(false);
@@ -329,38 +306,17 @@ function AdminPageInner() {
     putGuests((prev) =>
       prev.map((x) => (x.id === g.id ? { ...x, ...extra, attendees: people } : x))
     );
-    const res = await fetch("/api/admin/guests", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      credentials: "same-origin",
-      body: JSON.stringify({
-        id: g.id,
-        // Sent as the three real states, never as a yes/no: an unanswered
-        // person must stay unanswered when somebody else is ticked off.
-        attendees: people.map((p) => ({
-          position: p.position,
-          church: p.church,
-          reception: p.reception,
-          allergies: p.allergies,
-        })),
-        churchKids: extra.churchKids ?? g.churchKids,
-        kids: extra.kids ?? g.kids,
-        kidsAllergies: extra.kidsAllergies ?? g.kidsAllergies ?? "",
-      }),
-    });
-    if (!res.ok) {
+    const saved = await putAnswers(g, people, extra);
+    if (!saved) {
       setError(t.couldNotSave);
       await load();
       return;
     }
-    const data = await res.json().catch(() => null);
-    if (data?.guest) {
-      putGuests((prev) =>
-        prev.map((x) =>
-          x.id === g.id ? { ...x, ...data.guest, attendees: data.attendees ?? people } : x
-        )
-      );
-    }
+    putGuests((prev) =>
+      prev.map((x) =>
+        x.id === g.id ? { ...x, ...saved.guest, attendees: saved.attendees } : x
+      )
+    );
   }
 
   /**
@@ -439,6 +395,9 @@ function AdminPageInner() {
     // capacity was tightened can never inflate the totals, and a household
     // invited without children never contributes any.
     const { adults, kids } = headcount(guests);
+    // Who was asked, as opposed to who is coming: every seat on every
+    // invitation, so the household count has a number of people beside it.
+    const asked = invitedHeadcount(guests);
     // The church has its own head count: a godparent who cannot stay for dinner
     // still needs a seat at the christening.
     const church = attending.reduce(
@@ -455,6 +414,9 @@ function AdminPageInner() {
     const sent = guests.filter((g) => g.inviteSent).length;
     return {
       invited,
+      invitedPeople: asked.total,
+      invitedAdults: asked.adults,
+      invitedKids: asked.kids,
       confirmed: attending.length,
       adults,
       kids,
@@ -602,6 +564,14 @@ function AdminPageInner() {
           <div className="flex gap-2 flex-wrap items-center">
             <LangToggle lang={lang} setLang={setLang} label={t.language} />
             {tab === "guests" && (
+              <Link
+                href="/admin/report"
+                className="pixel-btn bg-pastel-blue border-4 border-black py-2 px-3 text-[14px] flex items-center gap-2"
+              >
+                <Icon name="print" /> {t.report}
+              </Link>
+            )}
+            {tab === "guests" && (
               <button
                 onClick={exportCsv}
                 className="pixel-btn bg-pastel-green border-4 border-black py-2 px-3 text-[14px] flex items-center gap-2"
@@ -686,6 +656,15 @@ function AdminPageInner() {
               {metrics.confirmed} <span className="text-[17px] opacity-70">{t.ofTotal(metrics.invited)}</span>
             </div>
             <div className="text-[13px] opacity-70 mt-1">{t.answeredYes}</div>
+          </div>
+          <div>
+            <div className="text-[14px] opacity-70 mb-1 flex items-center gap-2">
+              <Icon name="guests" /> {t.invitedPeople}
+            </div>
+            <div className="text-xl sm:text-2xl">{metrics.invitedPeople}</div>
+            <div className="text-[13px] opacity-70 mt-1">
+              {t.adultsKids(metrics.invitedAdults, metrics.invitedKids)}
+            </div>
           </div>
           <div>
             <div className="text-[14px] opacity-70 mb-1 flex items-center gap-2">
@@ -1093,43 +1072,18 @@ function AdminPageInner() {
                                 ["church", t.atChurch, person.church],
                                 ["reception", t.atReception, person.reception],
                               ] as const).map(([part, label, said]) => (
-                                <span
+                                <AnswerButtons
                                   key={part}
-                                  className="inline-flex items-center gap-1 border-2 border-black bg-white px-2 py-0.5"
-                                >
-                                  {label}:
-                                  {([
-                                    ["ATTENDING", "attending", t.personAttending, "bg-pastel-green"],
-                                    ["DECLINED", "declined", t.personDeclined, "bg-pastel-pink"],
-                                  ] as const).map(([value, icon, text, tone]) => (
-                                    <button
-                                      key={value}
-                                      type="button"
-                                      aria-pressed={said === value}
-                                      title={t.answerFor(person.name)}
-                                      onClick={() =>
-                                        answerPart(
-                                          g,
-                                          person.position,
-                                          part,
-                                          said === value ? "PENDING" : value
-                                        )
-                                      }
-                                      className={`pixel-btn inline-flex items-center gap-1 border-2 border-black px-1.5 py-0.5 ${
-                                        said === value ? tone : "bg-white opacity-50"
-                                      }`}
-                                    >
-                                      <Icon name={icon} className="h-3.5 w-3.5 shrink-0" />
-                                      {text}
-                                    </button>
-                                  ))}
-                                  {said === "PENDING" && (
-                                    <span className="inline-flex items-center gap-1 opacity-70">
-                                      <Icon name="pending" className="h-3.5 w-3.5 shrink-0" />
-                                      {t.personPending}
-                                    </span>
-                                  )}
-                                </span>
+                                  said={said}
+                                  label={label}
+                                  attendingText={t.personAttending}
+                                  declinedText={t.personDeclined}
+                                  pendingText={t.personPending}
+                                  title={t.answerFor(person.name)}
+                                  onAnswer={(next) =>
+                                    answerPart(g, person.position, part, next)
+                                  }
+                                />
                               ))}
                               {/* Only somebody staying for the meal eats with us. */}
                               {person.reception === "ATTENDING" && (
