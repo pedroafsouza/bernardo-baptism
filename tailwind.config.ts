@@ -9,6 +9,9 @@ const config: Config = {
     extend: {
       fontFamily: {
         pixel: ['"Pixelify Sans"', '"Trebuchet MS"', "system-ui", "sans-serif"],
+        // The working font. Guests get the pixel face; whoever is reading a
+        // hundred names off the admin panel gets one built for reading.
+        ui: ["Roboto", "system-ui", "-apple-system", "Segoe UI", "sans-serif"],
       },
       colors: {
         pastel: {

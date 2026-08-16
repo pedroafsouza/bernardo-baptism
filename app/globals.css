@@ -83,6 +83,41 @@ select,
     0 8px 0 8px rgba(0, 0, 0, 0.15);
 }
 
+/* The invitation is a pixel game and reads like one. The admin panel is a
+   working screen — a hundred household names, allergy notes and audit lines
+   read in one sitting — and Pixelify Sans costs real effort at that length.
+   Everything under /admin therefore switches to Roboto, while the guest-facing
+   pages keep the pixel face. The pixel borders and buttons stay: it is the same
+   site, only set in a letter you can read. */
+.admin-ui,
+.admin-ui input,
+.admin-ui textarea,
+.admin-ui select,
+.admin-ui button {
+  font-family: Roboto, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.admin-ui b,
+.admin-ui strong,
+.admin-ui h1,
+.admin-ui h2,
+.admin-ui h3,
+.admin-ui th {
+  font-weight: 700;
+}
+
+/* Roboto's lowercase is taller than Pixelify Sans at the same pixel size, so
+   the hand-set sizes the panel uses would come out heavy. A tick smaller keeps
+   the layout as it was drawn while still reading far more easily. */
+.admin-ui .text-\[13px\] {
+  font-size: 12px;
+}
+.admin-ui .text-\[14px\] {
+  font-size: 13px;
+}
+
 .pixel-btn {
   transition: transform 0.05s ease;
 }

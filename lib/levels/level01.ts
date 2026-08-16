@@ -27,18 +27,18 @@ export const level01: Level = {
 
   platforms: [
     // reachable blessing platforms (2 tiles above the ground)
-    { x0: 9, x1: 11, row: 6 },
-    { x0: 23, x1: 25, row: 6 },
+    { x0: 8, x1: 10, row: 6 },
+    { x0: 24, x1: 26, row: 6 },
     { x0: 41, x1: 43, row: 6 },
     { x0: 70, x1: 72, row: 6 }, // cross #2
     { x0: 121, x1: 123, row: 6 }, // cross #3
     // low stepping platforms for bones
     { x0: 17, x1: 18, row: 7 },
-    { x0: 35, x1: 36, row: 7 },
+    { x0: 34, x1: 35, row: 7 },
     { x0: 52, x1: 53, row: 6 },
-    { x0: 75, x1: 76, row: 7 },
+    { x0: 78, x1: 79, row: 7 },
     { x0: 88, x1: 89, row: 7 },
-    { x0: 94, x1: 95, row: 6 },
+    { x0: 95, x1: 96, row: 6 },
     { x0: 106, x1: 108, row: 6 },
     // drifting rafts that ferry Bernardo across the long pits
     { x0: 29, x1: 30, row: 6, move: { dx: 4, dur: 2600 } },
@@ -60,20 +60,25 @@ export const level01: Level = {
   // "?" bonus blocks — bump from below for an extra bone. They sit on row 5 so
   // there is a full tile of headroom underneath: at row 6 they hung right above
   // the player's head, making it awkward to run and jump past them.
+  //
+  // They also keep BLOCK_CLEARANCE (3) tiles of daylight from every platform,
+  // springboard and raft. A block standing right beside a step used to eat the
+  // jump onto it — Bernardo's head hit the block instead of his feet finding
+  // the ledge — so each one now has room on both sides to be bumped on purpose.
   blocks: [
     { tx: 13, ty: 5, reward: "bone" },
-    { tx: 27, ty: 5, reward: "bone" },
-    { tx: 39, ty: 5, reward: "bone" },
+    { tx: 21, ty: 5, reward: "bone" },
+    { tx: 38, ty: 5, reward: "bone" },
     { tx: 57, ty: 5, reward: "bone" },
-    { tx: 74, ty: 5, reward: "bone" },
+    { tx: 75, ty: 5, reward: "bone" },
     { tx: 92, ty: 5, reward: "bone" },
-    { tx: 109, ty: 5, reward: "bone" },
+    { tx: 117, ty: 5, reward: "bone" },
   ],
 
   // 3 blessings spread across the whole journey so the full level must be
   // traversed to unlock the church.
   crosses: [
-    [10, 5],
+    [9, 5],
     [71, 5],
     [122, 5],
   ],
@@ -86,8 +91,8 @@ export const level01: Level = {
     [17, 6], [18, 6], [21, 7], [24, 5], [24, 7],
     [28, 6], [33, 7], [35, 6], [39, 7], [42, 5],
     [42, 7], [49, 7], [52, 5], [56, 7], [58, 7],
-    [67, 7], [69, 6], [70, 5], [73, 7], [75, 6],
-    [78, 7], [79, 6], [85, 7], [88, 6], [90, 7],
+    [67, 7], [69, 6], [70, 5], [74, 7], [75, 6],
+    [77, 7], [79, 6], [85, 7], [88, 6], [90, 7],
     [92, 6], [95, 7], [97, 6], [103, 7], [106, 5],
     [108, 7], [110, 6], [113, 7], [117, 7], [120, 6],
     [121, 5], [125, 7],
@@ -97,15 +102,18 @@ export const level01: Level = {
     [3, 7, F.bush], [6, 7, F.grassTuft], [8, 7, F.mushroom],
     [12, 7, F.rock], [16, 7, F.leaves], [19, 7, F.bushSmall],
     [22, 7, F.grassTuft], [27, 7, F.mushroom], [29, 7, F.leaves],
-    [34, 7, F.bush], [38, 7, F.grassTuft], [44, 7, F.rock],
+    [32, 7, F.bush], [38, 7, F.grassTuft], [44, 7, F.rock],
     [45, 7, F.cactus], [51, 7, F.bushSmall], [55, 7, F.grassTuft],
     [60, 7, F.bush], [67, 7, F.grassTuft], [72, 7, F.mushroom],
-    [78, 7, F.rock], [85, 7, F.leaves], [90, 7, F.bushSmall],
+    [76, 7, F.rock], [85, 7, F.leaves], [90, 7, F.bushSmall],
     [96, 7, F.grassTuft], [104, 7, F.bush], [110, 7, F.mushroom],
     [118, 7, F.grassTuft], [124, 7, F.leaves],
   ],
 
-  trees: [27, 44, 57, 79, 96, 119],
+  // Foreground trees stand on open grass: never in a stepping platform's row
+  // and never in a "?" block's column, so nothing the player has to land on or
+  // bump ever hides behind a canopy.
+  trees: [27, 44, 57, 73, 91, 119],
 
   flowers: [
     2, 4, 7, 11, 13, 18, 21, 26, 28, 34, 38, 44, 49, 51, 55, 58,
@@ -114,7 +122,9 @@ export const level01: Level = {
 
   signs: [
     { tile: 31, label: "DANMARK\n03.10.2026", bg: 0xc8102e, fg: 0xffffff },
-    { tile: 117, label: "KIRKE\n→", bg: 0xffffff, fg: 0xc8102e },
+    // "KIRKE" is a word, not a place name, so it is read in the guest's own
+    // language — the sign that points the way is no use if it can't be read.
+    { tile: 117, label: "KIRKE\n→", labelKey: "church", bg: 0xffffff, fg: 0xc8102e },
   ],
 
   // Flag poles, cycling Denmark → Brazil → Pernambuco → Straw Hat. The columns

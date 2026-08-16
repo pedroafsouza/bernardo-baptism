@@ -64,6 +64,13 @@ export type AdminDict = {
   message: string;
   missingReply: (n: number) => string;
   everyoneAnswered: string;
+  /** Who said no — not how many. */
+  saidNo: (n: number) => string;
+  nobodyDeclined: string;
+  declinedWholeDay: string;
+  declinedChurchOnly: string;
+  declinedReceptionOnly: string;
+  declinedAlone: string;
   link: string;
   copied: string;
   leaderboard: string;
@@ -420,6 +427,12 @@ const da: AdminDict = {
   message: "Besked",
   missingReply: (n) => `Mangler svar (${n})`,
   everyoneAnswered: "Alle inviterede har svaret!",
+  saidNo: (n) => `Har sagt nej (${n})`,
+  nobodyDeclined: "Ingen har sagt nej endnu.",
+  declinedWholeDay: "Hele dagen",
+  declinedChurchOnly: "Kun kirken",
+  declinedReceptionOnly: "Kun festen",
+  declinedAlone: "Resten af husstanden kommer",
   link: "Link",
   copied: "Kopieret!",
   leaderboard: "Topliste",
@@ -669,6 +682,12 @@ const en: AdminDict = {
   message: "Message",
   missingReply: (n) => `Missing reply (${n})`,
   everyoneAnswered: "Everyone invited has answered!",
+  saidNo: (n) => `Said no (${n})`,
+  nobodyDeclined: "Nobody has said no yet.",
+  declinedWholeDay: "The whole day",
+  declinedChurchOnly: "The church only",
+  declinedReceptionOnly: "The party only",
+  declinedAlone: "The rest of the household is coming",
   link: "Link",
   copied: "Copied!",
   leaderboard: "Leaderboard",

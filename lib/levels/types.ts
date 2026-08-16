@@ -29,10 +29,15 @@ export type TilePos = [tx: number, ty: number];
 // A decorative, non-solid tile stamped from the tileset (tx, ty, frame index).
 export type DecorDef = [tx: number, ty: number, frame: number];
 
-// A roadside signboard planted on a post.
+// A roadside signboard planted on a post. Signs that say a *word* rather than a
+// name carry a `labelKey` so the scene can show them in the guest's language;
+// `label` is the Danish original and stays as the fallback.
+export type SignKey = "church";
+
 export type SignDef = {
   tile: number;
   label: string;
+  labelKey?: SignKey;
   bg: number;
   fg: number;
 };

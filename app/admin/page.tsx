@@ -20,6 +20,7 @@ import VisitsPanel from "@/components/admin/VisitsPanel";
 import PasswordChangeGate from "@/components/admin/PasswordChangeGate";
 import { copyText } from "@/lib/clipboard";
 import { clampParty, headcount, invitedHeadcount } from "@/lib/capacity";
+import { listDeclines, type Decline } from "@/lib/adminDeclines";
 import {
   summarizeAllergies,
   summarizeAttendees,
@@ -29,6 +30,7 @@ import {
   useAdminLang,
   ADMIN_LANGS,
   ADMIN_LANG_LABEL,
+  type AdminDict,
   type AdminLang,
 } from "@/lib/adminI18n";
 import { MESSAGE_LANGS, type MessageLang } from "@/lib/invite";
@@ -51,6 +53,21 @@ type AdminIdentity = {
 };
 
 type Tab = "guests" | "visits" | "audit" | "admins" | "account";
+
+/**
+ * What somebody said no to, in one line: which half of the day, and — when it
+ * is one person out of a household that is still coming — that the rest of
+ * their invitation is unaffected.
+ */
+function declineReason(d: Decline, t: AdminDict): string {
+  const part =
+    d.parts === "church"
+      ? t.declinedChurchOnly
+      : d.parts === "reception"
+      ? t.declinedReceptionOnly
+      : t.declinedWholeDay;
+  return d.scope === "person" ? `${part} · ${t.declinedAlone}` : part;
+}
 
 function LangToggle({
   lang,
@@ -378,6 +395,25 @@ function AdminPageInner() {
     logAction("INVITE_MESSAGE_OPENED", g.guestCode, g.name);
   }
 
+  /**
+   * Jumps from a name in one of the summary panels to that household in the
+   * list. The filters are cleared first, because a household hidden by a filter
+   * would otherwise be scrolled to and not be there.
+   */
+  function revealGuest(id: string) {
+    setFilterGroup("ALL");
+    setFilterStatus("ALL");
+    setFilterSent("ALL");
+    setOpenPeople((o) => ({ ...o, [id]: true }));
+    setTimeout(
+      () =>
+        document
+          .getElementById(`guest-${id}`)
+          ?.scrollIntoView({ behavior: "smooth", block: "center" }),
+      0
+    );
+  }
+
   const filtered = useMemo(
     () =>
       guests.filter(
@@ -399,6 +435,10 @@ function AdminPageInner() {
     const notPlayed = guests.filter((g) => !g.playedAt);
     return { notSent, noAnswer, notPlayed };
   }, [guests]);
+
+  // Who said no, by name: whole invitations that declined, and the individuals
+  // who cannot come inside a household that is otherwise coming.
+  const declines = useMemo(() => listDeclines(guests), [guests]);
 
   const metrics = useMemo(() => {
     const invited = guests.length;
@@ -747,7 +787,7 @@ function AdminPageInner() {
         </div>
 
         {/* What is missing */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
           <div className="bg-white border-4 border-black p-4">
             <h2 className="text-[16px] mb-3 flex items-center gap-2">
               <Icon name="sent" className="text-blue-600" />
@@ -796,6 +836,33 @@ function AdminPageInner() {
                     >
                       <Icon name="copy" />
                       {copiedCode === g.guestCode ? t.copied : t.link}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="bg-white border-4 border-black p-4">
+            <h2 className="text-[16px] mb-3 flex items-center gap-2">
+              <Icon name="declined" className="text-rose-600" />
+              {t.saidNo(declines.length)}
+            </h2>
+            {declines.length === 0 ? (
+              <p className="text-[14px] opacity-60">{t.nobodyDeclined}</p>
+            ) : (
+              <ul className="text-[14px] space-y-1 max-h-56 overflow-y-auto">
+                {declines.map((d, i) => (
+                  <li key={`${d.guestId}-${d.scope}-${i}`}>
+                    <button
+                      onClick={() => revealGuest(d.guestId)}
+                      className="w-full text-left hover:bg-pastel-pink/40 px-1 py-0.5"
+                      title={d.group}
+                    >
+                      <span className="truncate block">{d.name}</span>
+                      <span className="text-[12px] opacity-60 block">
+                        {declineReason(d, t)}
+                      </span>
                     </button>
                   </li>
                 ))}
@@ -920,7 +987,7 @@ function AdminPageInner() {
                 const expanded = openPeople[g.id] ?? false;
                 return (
                 <Fragment key={g.id}>
-                <tr className="border-b-2 border-black/10">
+                <tr id={`guest-${g.id}`} className="border-b-2 border-black/10">
                   <td className="p-2 text-center">
                     <input
                       type="checkbox"

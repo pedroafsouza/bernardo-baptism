@@ -17,6 +17,19 @@ import {
   OSCAR_FULL_AT_BONES,
   type Control,
 } from "@/lib/gameConstants";
+import {
+  BALL_RADIUS_PX,
+  MAX_KICK_SPEED,
+  SETTLE_SPEED,
+  WALL_RESTITUTION,
+  dragStep,
+  impactSpeed,
+  kickVelocity,
+  liftFactor,
+  reboundSpeed,
+  rollStep,
+  spinRate,
+} from "@/lib/ballPhysics";
 import { generateTextures } from "@/components/game/textures";
 import {
   SKY_ATLAS,
@@ -62,6 +75,9 @@ export type SceneDeps = {
 // shapes, so in-world text stays readable at these small canvas sizes.
 const GAME_FONT = '"Pixelify Sans", "Trebuchet MS", sans-serif';
 
+/** How long the arrival celebration runs at the church door. */
+const CELEBRATION_MS = 5200;
+
 // In-world copy. Kept beside the scene because Phaser text can't use the React
 // i18n hook, but it follows the same Danish-default / opt-in rule.
 const SCENE_TEXT = {
@@ -70,18 +86,21 @@ const SCENE_TEXT = {
     churchOpen: "Kirken er åben — gå ind!",
     bernardo: "Hej! Jeg er\nBernardo",
     oscar: "Og jeg er\nOscar!",
+    signs: { church: "KIRKE\n→" },
   },
   en: {
     collect: "Collect 3 blessings!",
     churchOpen: "The church is open — go in!",
     bernardo: "Hi! I'm\nBernardo",
     oscar: "And I'm\nOscar!",
+    signs: { church: "CHURCH\n→" },
   },
   pt: {
     collect: "Colete 3 bênçãos!",
     churchOpen: "A igreja está aberta — entre!",
     bernardo: "Oi! Eu sou o\nBernardo",
     oscar: "E eu sou o\nOscar!",
+    signs: { church: "IGREJA\n→" },
   },
 } as const;
 
@@ -119,6 +138,8 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
         keys!: any;
         churchUnlocked = false;
         entered = false;
+        /** While the arrival fireworks are still going, in scene time. */
+        celebrationUntil = 0;
         jumpLatch = false;
         spawnX = 0;
         spawnY = 0;
@@ -526,8 +547,11 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
               .setTint(Phaser.Utils.Array.GetRandom(flowerTints));
           });
 
-          // story signboards
-          lvl.signs.forEach((s) => this.addSign(s.tile, s.label, s.bg, s.fg));
+          // story signboards — a sign that says a word rather than a place name
+          // is shown in the guest's language
+          lvl.signs.forEach((s) =>
+            this.addSign(s.tile, s.labelKey ? TXT.signs[s.labelKey] : s.label, s.bg, s.fg)
+          );
 
           // Bernardo's four flags, cycled along the road in the order they tell
           // his story: Denmark, Brazil, Pernambuco, and the Straw Hats last.
@@ -574,20 +598,28 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
             lvl.bones.forEach(([x, y]) => this.addCoin(x, y, -1));
           }
 
-          // bouncy World Cup footballs the bear can kick around
-          // Arcade Physics separates circle bodies against static rectangles very
-          // poorly (the ball sinks into and sticks inside the floor), so the ball
-          // uses a slightly inset AABB body instead — the rolling look comes from
-          // the sprite rotation applied in update().
+          // Kickable World Cup footballs. Arcade Physics separates circle bodies
+          // against static rectangles very poorly (the ball sinks into and
+          // sticks inside the floor), so the ball uses a slightly inset AABB
+          // body instead — the rolling look comes from the sprite rotation
+          // applied in update().
+          //
+          // The bounce, the roll and the kick are Newtonian (see
+          // lib/ballPhysics): vertical restitution is handled by hand from the
+          // measured impact speed rather than by Arcade, because Arcade's
+          // bounce never sheds energy and left the ball trampolining forever.
           const ballTiles = lvl.balls ?? (lvl.ballTile !== undefined ? [lvl.ballTile] : []);
           ballTiles.forEach((tx) => {
             const b = this.physics.add.image(tx * T + T / 2, BALL_REST_Y, "ball");
             b.setDepth(3);
             b.body.setSize(BALL_SIZE, BALL_SIZE);
             b.body.setOffset((BALL_TEX - BALL_SIZE) / 2, BALL_TEX - BALL_SIZE);
-            b.setBounce(0.55).setCollideWorldBounds(true);
-            b.setDamping(true).setDrag(0.6);
-            b.body.setMaxVelocity(500, 700);
+            // Sideways knocks keep Arcade's restitution; the vertical bounce is
+            // computed from the impact speed in stepBall().
+            b.setBounce(WALL_RESTITUTION, 0).setCollideWorldBounds(true);
+            b.body.setMaxVelocity(MAX_KICK_SPEED, 900);
+            b.setData("vy", 0);
+            b.setData("apexY", b.y);
             this.balls.add(b);
           });
 
@@ -856,12 +888,9 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
           // football physics: bounces off ground, and the bear kicks it on contact
           this.physics.add.collider(this.balls, this.solids);
           this.physics.add.collider(this.balls, this.pads);
-          this.physics.add.collider(this.player, this.balls, (_p: any, ball: any) => {
-            const dir = ball.x < this.player.x ? -1 : 1;
-            ball.setVelocityX(dir * 300);
-            ball.setVelocityY(-260);
-            this.collectFx(ball.x, ball.y - 8, 0xffffff, 4);
-          });
+          this.physics.add.collider(this.player, this.balls, (_p: any, ball: any) =>
+            this.kickBall(ball)
+          );
 
           this.physics.add.overlap(this.player, this.crosses, (_p: any, cross: any) => {
             const glow = cross.getData("glow");
@@ -1118,6 +1147,66 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
           this.oscarHop();
         }
 
+        // ---- football ----
+        // A kick is an impulse, not a teleport: the boot's swing plus whatever
+        // speed Bernardo was carrying is shared with the ball by conservation of
+        // momentum, and where he strikes it decides how much of that comes out
+        // as loft. Running into a ball therefore drives it much further than
+        // nudging it while standing still, and standing *on* it squirts it out
+        // low along the grass.
+        kickBall(ball: any) {
+          const pb = this.player.body as any;
+          const dir: -1 | 1 = ball.x < this.player.x ? -1 : 1;
+          const lift = liftFactor(pb.bottom, ball.y, BALL_RADIUS_PX);
+          // only the part of Bernardo's run that goes *into* the ball counts
+          const closing = Math.max(0, dir * pb.velocity.x);
+          const { vx, vy, speed } = kickVelocity({ dir, playerSpeed: closing, lift });
+          ball.body.setVelocity(vx, vy);
+          ball.setData("vy", vy);
+          ball.setData("apexY", ball.body.bottom);
+          this.collectFx(ball.x, ball.y - 8, 0xffffff, 3 + Math.round(speed / 200));
+        }
+
+        /**
+         * One Newtonian step for a ball: the rebound off the grass is the speed
+         * it actually arrived with times the coefficient of restitution, so it
+         * bounces twice and settles like a real football instead of pogoing;
+         * on the ground it loses speed to rolling resistance, in the air to
+         * quadratic drag, and its spin is v / r — rolling without slipping.
+         */
+        stepBall(b: any, dt: number) {
+          const body = b.body as any;
+          const onFloor = body.blocked.down || body.touching.down;
+          // the velocity it had *before* Arcade's separation zeroed it
+          const arriving = b.getData("vy") ?? 0;
+
+          if (onFloor) {
+            if (arriving > SETTLE_SPEED) {
+              // How fast it actually met the grass: v² = u² + 2gh over the drop
+              // since the top of its arc, which is what the rebound is made of.
+              const fell = Math.max(0, body.bottom - (b.getData("apexY") ?? body.bottom));
+              const hit = Math.max(arriving, impactSpeed(0, fell));
+              const back = reboundSpeed(hit);
+              if (back > 0) {
+                body.setVelocityY(-back);
+                b.setData("apexY", body.bottom);
+              }
+              // the grass takes a bite out of the roll on every impact
+              body.setVelocityX(body.velocity.x * 0.92);
+              if (hit > 260) this.collectFx(b.x, body.bottom - 4, 0xe8e0d0, 3);
+            }
+            body.setVelocityX(rollStep(body.velocity.x, dt));
+          } else {
+            const damped = dragStep(body.velocity.x, body.velocity.y, dt);
+            body.setVelocity(damped.vx, damped.vy);
+            // remember the top of the arc so the fall height is known exactly
+            if (body.velocity.y <= 0) b.setData("apexY", body.bottom);
+          }
+
+          b.rotation += spinRate(body.velocity.x) * dt;
+          b.setData("vy", body.velocity.y);
+        }
+
         collectFx(x: number, y: number, color: number, count: number) {
           // soft twinkle puff — gentle rise + fade instead of a harsh spark burst
           const p = this.add.particles(x, y, "twinkle", {
@@ -1183,64 +1272,213 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
           });
         }
 
-        // A grand celebration when Bernardo reaches the church door: layered light
-        // rings, a shower of twinkles, confetti, and a little victory hop.
-        goalFx(x: number, y: number) {
-          [0, 130, 260].forEach((delay) => {
+        /**
+         * One firework: a shell climbs out of the grass trailing sparks, hangs
+         * for a beat, and opens into a coloured burst that drifts down. Shells
+         * are launched around wherever Bernardo is standing, so the show happens
+         * over *him* rather than over a fixed point he has already walked past.
+         */
+        firework(delay: number) {
+          this.time.delayedCall(delay, () => {
+            if (!this.player?.active) return;
+            const tint = Phaser.Utils.Array.GetRandom([
+              0xffd34d, 0xc8102e, 0xffffff, 0x8ac47e, 0xf7a9c4, 0x9fd8ff,
+            ]);
+            const x = this.player.x + Phaser.Math.Between(-190, 190);
+            const from = 8 * T - 10;
+            const to = this.player.y - Phaser.Math.Between(120, 220);
+
+            const shell = this.add
+              .image(x, from, "spark")
+              .setDepth(41)
+              .setTint(tint)
+              .setBlendMode(Phaser.BlendModes.ADD)
+              .setScale(1.4);
+
+            // the trail is emitted from the shell, so it draws the whole climb
+            const trail = this.add.particles(0, 0, "twinkle", {
+              speed: { min: 8, max: 26 },
+              angle: { min: 80, max: 100 },
+              scale: { start: 0.34, end: 0 },
+              alpha: { start: 0.8, end: 0 },
+              lifespan: 380,
+              frequency: 22,
+              tint,
+              blendMode: "ADD",
+            });
+            trail.setDepth(40);
+            trail.startFollow(shell);
+
+            this.tweens.add({
+              targets: shell,
+              y: to,
+              // decelerating climb: a shell is slowest at the top of its arc
+              duration: Phaser.Math.Between(760, 980),
+              ease: "Sine.out",
+              onComplete: () => {
+                const bx = shell.x;
+                const by = shell.y;
+                shell.destroy();
+                trail.stop();
+                this.time.delayedCall(420, () => trail.destroy());
+                this.burst(bx, by, tint);
+              },
+            });
+          });
+        }
+
+        /** The opening of a firework: a flash, a ring, and a shower of stars. */
+        burst(x: number, y: number, tint: number) {
+          const flash = this.add
+            .image(x, y, "glow")
+            .setDepth(42)
+            .setBlendMode(Phaser.BlendModes.ADD)
+            .setTint(tint)
+            .setScale(0.4);
+          this.tweens.add({
+            targets: flash,
+            scale: 2.2,
+            alpha: { from: 0.9, to: 0 },
+            duration: 620,
+            ease: "Sine.out",
+            onComplete: () => flash.destroy(),
+          });
+
+          const ring = this.add
+            .image(x, y, "ring")
+            .setDepth(42)
+            .setBlendMode(Phaser.BlendModes.ADD)
+            .setTint(tint)
+            .setScale(0.15);
+          this.tweens.add({
+            targets: ring,
+            scale: 1.9,
+            alpha: { from: 0.85, to: 0 },
+            duration: 760,
+            ease: "Cubic.out",
+            onComplete: () => ring.destroy(),
+          });
+
+          const stars = this.add.particles(x, y, "twinkle", {
+            speed: { min: 60, max: 210 },
+            angle: { min: 0, max: 360 },
+            gravityY: 130,
+            rotate: { min: -180, max: 180 },
+            scale: { start: 0.75, end: 0 },
+            alpha: { start: 1, end: 0 },
+            lifespan: { min: 700, max: 1250 },
+            quantity: 26,
+            tint: [tint, 0xffffff],
+            blendMode: "ADD",
+            emitting: false,
+          });
+          stars.setDepth(42);
+          stars.explode(26, x, y);
+          this.time.delayedCall(1400, () => stars.destroy());
+        }
+
+        /**
+         * The finale at the church door. It used to be a single 300 ms bang that
+         * was over before the eye found it, fired at a fixed point Bernardo then
+         * walked away from. Now it is a proper little show: a soft wash of
+         * light, confetti and twinkles that ride along with Bernardo, and a
+         * volley of fireworks that keeps going for a few seconds above him.
+         */
+        goalFx() {
+          const cam = this.cameras.main;
+          // a warm wash rather than a hard white blink
+          cam.flash(650, 255, 246, 214, false);
+          // and the gentlest push in, easing back out again
+          const zoom = cam.zoom;
+          this.tweens.add({
+            targets: cam,
+            zoom: zoom * 1.06,
+            duration: 900,
+            yoyo: true,
+            hold: 500,
+            ease: "Sine.inOut",
+          });
+
+          // three haloes swelling out of Bernardo, each softer than the last
+          [0, 260, 520].forEach((delay, i) => {
             this.time.delayedCall(delay, () => {
               const ring = this.add
-                .image(x, y, "ring")
+                .image(this.player.x, this.player.y - 20, "ring")
                 .setDepth(41)
                 .setBlendMode(Phaser.BlendModes.ADD)
-                .setScale(0.2);
+                .setScale(0.2)
+                .setAlpha(0.9 - i * 0.2);
               this.tweens.add({
                 targets: ring,
-                scale: 2.4,
-                alpha: { from: 1, to: 0 },
-                duration: 700,
-                ease: "Cubic.out",
+                scale: 2.6,
+                alpha: 0,
+                duration: 1100,
+                ease: "Sine.out",
                 onComplete: () => ring.destroy(),
               });
             });
           });
 
-          const burst = this.add.particles(x, y, "twinkle", {
-            speed: { min: 90, max: 240 },
-            angle: { min: 0, max: 360 },
-            gravityY: 220,
-            rotate: { min: -200, max: 200 },
-            scale: { start: 0.9, end: 0 },
+          // twinkles and confetti both ride with him, so the celebration keeps
+          // up with a bear who is still walking
+          const sparkle = this.add.particles(0, 0, "twinkle", {
+            speed: { min: 40, max: 150 },
+            angle: { min: 200, max: 340 },
+            gravityY: 140,
+            rotate: { min: -180, max: 180 },
+            scale: { start: 0.8, end: 0 },
             alpha: { start: 1, end: 0 },
-            lifespan: 900,
-            quantity: 26,
-            tint: [0xffd34d, 0xffffff, 0xfff3c4, 0xc8102e],
+            lifespan: 1100,
+            frequency: 55,
+            tint: [0xffd34d, 0xffffff, 0xfff3c4],
             blendMode: "ADD",
           });
-          burst.setDepth(41);
-          this.time.delayedCall(950, () => burst.destroy());
+          sparkle.setDepth(41);
+          sparkle.startFollow(this.player, 0, -18);
 
-          const confetti = this.add.particles(x, y - 30, "confetti", {
-            speedY: { min: -260, max: -80 },
-            speedX: { min: -140, max: 140 },
+          const confetti = this.add.particles(0, 0, "confetti", {
+            speedY: { min: -300, max: -120 },
+            speedX: { min: -170, max: 170 },
             angle: { min: 0, max: 360 },
             rotate: { min: 0, max: 360 },
             scale: { min: 0.6, max: 1.3 },
-            lifespan: 1600,
-            quantity: 30,
+            gravityY: 200,
+            lifespan: 2200,
+            frequency: 45,
             tint: [0xc8102e, 0xffffff, 0xffd34d, 0x8ac47e, 0xf7a9c4],
           });
           confetti.setDepth(41);
-          this.time.delayedCall(1700, () => confetti.destroy());
+          confetti.startFollow(this.player, 0, -40);
 
-          this.cameras.main.flash(300, 255, 250, 220);
+          const SHOW_MS = CELEBRATION_MS;
+          this.time.delayedCall(SHOW_MS - 900, () => {
+            // fade out by stopping the emitters and letting the last particles
+            // finish their own lifetime — nothing ever pops out of existence
+            sparkle.stop();
+            confetti.stop();
+          });
+          this.time.delayedCall(SHOW_MS + 1600, () => {
+            sparkle.destroy();
+            confetti.destroy();
+          });
 
-          // Bernardo's victory hop
-          this.tweens.add({
-            targets: this.player,
-            y: this.player.y - 26,
-            duration: 220,
-            yoyo: true,
-            ease: "Quad.out",
+          // the volley: a shell every ~450 ms for the length of the show
+          for (let i = 0, at = 120; at < SHOW_MS - 600; i++, at += Phaser.Math.Between(320, 620)) {
+            this.firework(at);
+          }
+
+          // Bernardo's victory hops — three of them, softening as he settles
+          [1, 0.72, 0.45].forEach((scale, i) => {
+            this.time.delayedCall(i * 420, () => {
+              if (!this.player?.active) return;
+              this.tweens.add({
+                targets: this.player,
+                y: this.player.y - 30 * scale,
+                duration: 210,
+                yoyo: true,
+                ease: "Sine.out",
+              });
+            });
           });
         }
 
@@ -1403,12 +1641,11 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
             }
           }
 
-          // footballs roll realistically — spin scales with each ball's speed
+          // footballs: Newtonian bounce, roll and spin (see stepBall)
           if (this.balls) {
+            const dt = Math.min(this.game.loop.delta, 50) / 1000;
             this.balls.children.iterate((b: any) => {
-              if (b && b.body) {
-                b.rotation += (b.body.velocity.x / 15) * (this.game.loop.delta / 1000);
-              }
+              if (b && b.body) this.stepBall(b, dt);
               return true;
             });
           }
@@ -1465,14 +1702,23 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
             const touching = this.physics.overlap(this.player, this.doorZone);
             if (touching && !this.entered) {
               this.entered = true;
-              this.goalFx(this.player.x, this.player.y - 20);
-              if (this.oscar) {
-                // Oscar celebrates arriving at the church with Bernardo
-                this.oscarTrick = "oscarCheer";
-                this.oscarTrickUntil = this.time.now + 1800;
-                this.oscar.play("oscarCheer", true);
+              if (this.time.now > this.celebrationUntil) {
+                // A fresh arrival gets the whole show, and the invitation waits
+                // a beat so the first fireworks are seen before it covers the
+                // screen. Walking back in while it is still going simply opens
+                // the invitation again — no second volley on top of the first.
+                this.celebrationUntil = this.time.now + CELEBRATION_MS;
+                this.goalFx();
+                if (this.oscar) {
+                  // Oscar celebrates arriving at the church with Bernardo
+                  this.oscarTrick = "oscarCheer";
+                  this.oscarTrickUntil = this.time.now + 2600;
+                  this.oscar.play("oscarCheer", true);
+                }
+                this.time.delayedCall(1150, () => onEnterRef.current());
+              } else {
+                onEnterRef.current();
               }
-              onEnterRef.current();
             }
             if (!touching) this.entered = false;
           }
