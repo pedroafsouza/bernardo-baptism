@@ -153,15 +153,20 @@ export default function PhaserGame({
 
       gameRef.current = game;
 
-      // `Phaser.Scale.RESIZE` only re-measures on window resize events, but this
-      // canvas is sized by `100dvh` — a mobile toolbar sliding away, a panel
-      // resize or a font-driven reflow can change the container without one.
-      // The stale canvas left a band of page background above the sky, so the
-      // container is observed directly.
+      // `Phaser.Scale.RESIZE` only re-measures the parent on a slow poll, and it
+      // then overwrites the size with the value it cached on the previous tick —
+      // so the canvas lagged a resize behind its container. This canvas is sized
+      // by `100dvh`, which changes without a window resize event (a mobile
+      // toolbar sliding away, a panel drag, a font-driven reflow), and the stale
+      // canvas was what left a band of page background above the sky. Observing
+      // the container and forcing a `refresh()` right after the resize makes the
+      // new size stick instead of being reverted.
       if (typeof ResizeObserver !== "undefined" && containerRef.current) {
         const ro = new ResizeObserver(([entry]) => {
           const { width, height } = entry.contentRect;
-          if (width > 0 && height > 0) game.scale.resize(width, height);
+          if (width <= 0 || height <= 0) return;
+          game.scale.resize(width, height);
+          game.scale.refresh();
         });
         ro.observe(containerRef.current);
         resizeObs = ro;

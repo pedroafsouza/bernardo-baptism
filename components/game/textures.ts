@@ -459,24 +459,6 @@ export function generateTextures(scene: any, Phaser: any) {
   g.fillCircle(30, 4, 2);
   g.generateTexture("lighthouse", 60, 172);
 
-  // Seagull — simple resting gull (white body, grey wing, yellow beak)
-  g.clear();
-  g.fillStyle(0xffffff, 1);
-  g.fillEllipse(22, 18, 30, 14); // body
-  g.fillCircle(9, 12, 6); // head
-  g.fillStyle(0xb8c2cc, 1);
-  g.fillEllipse(28, 16, 20, 9); // folded wing
-  g.fillStyle(0x9aa6b0, 1);
-  g.fillTriangle(34, 14, 40, 12, 34, 18); // wing tip
-  g.fillStyle(0xf2b134, 1);
-  g.fillTriangle(3, 11, 3, 15, -3, 13); // beak
-  g.fillStyle(0x2a2a2a, 1);
-  g.fillCircle(8, 11, 1.4); // eye
-  g.fillStyle(0xf2b134, 1);
-  g.fillRect(18, 24, 1.6, 5); // legs
-  g.fillRect(24, 24, 1.6, 5);
-  g.generateTexture("seagull", 44, 32);
-
   // ---------------------------------------------------------------------------
   // Gameplay props (sand pit fill, bonus blocks, moving platform)
   // ---------------------------------------------------------------------------

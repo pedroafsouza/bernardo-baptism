@@ -635,7 +635,7 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
         }
 
         // Parallax background scenery (windmill, timber houses, lighthouse,
-        // beech trees, drifting gulls) authored as Level.landmarks.
+        // beech trees) authored as Level.landmarks.
         buildLandmarks(lvl: Level) {
           (lvl.landmarks ?? []).forEach((p) => {
             const img = this.add

@@ -155,9 +155,11 @@ export const level01: Level = {
     { key: "mill", x: 1950, y: 354, depth: -18, scrollX: 0.5, scale: 0.78, alpha: 0.97 },
     { key: "millSails", x: 1950, y: 268, depth: -17, scrollX: 0.5, scale: 0.78, originY: 0.5, spin: 10500 },
 
-    // Kallur-style lighthouses standing tall on the coastal shore
-    { key: "lighthouse", x: 1300, y: 384, depth: -17, scrollX: 0.6, scale: 0.95 },
-    { key: "lighthouse", x: 2650, y: 384, depth: -17, scrollX: 0.6, scale: 0.9 },
+    // Kallur-style lighthouses standing tall on the coastal shore. They sit on
+    // the far side of the villages (lower parallax factor), so they must also
+    // sort behind them — the timber houses live at -18/-17.
+    { key: "lighthouse", x: 1300, y: 384, depth: -19, scrollX: 0.6, scale: 0.95 },
+    { key: "lighthouse", x: 2650, y: 384, depth: -19, scrollX: 0.6, scale: 0.9 },
 
     // half-timbered villages on the approach to the church
     { key: "timberHouse", x: 2040, y: 388, depth: -18, scrollX: 0.8, scale: 0.85 },
@@ -166,13 +168,6 @@ export const level01: Level = {
     { key: "timberHouse", x: 3480, y: 388, depth: -18, scrollX: 0.85, scale: 0.85 },
     { key: "timberHouse", x: 3640, y: 388, depth: -17, scrollX: 0.85, scale: 1.0 },
     { key: "timberHouse", x: 3800, y: 388, depth: -18, scrollX: 0.85, scale: 0.82, alpha: 0.97 },
-
-    // seagulls drifting over the harbour
-    { key: "seagull", x: 900, y: 120, depth: -27, scrollX: 0.3, scale: 1.1, drift: true },
-    { key: "seagull", x: 1250, y: 95, depth: -27, scrollX: 0.32, scale: 0.9, drift: true },
-    { key: "seagull", x: 1600, y: 140, depth: -27, scrollX: 0.28, scale: 1.0, drift: true },
-    { key: "seagull", x: 2050, y: 110, depth: -27, scrollX: 0.3, scale: 1.05, drift: true },
-    { key: "seagull", x: 2500, y: 130, depth: -27, scrollX: 0.31, scale: 0.95, drift: true },
   ],
 };
 

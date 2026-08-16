@@ -53,7 +53,7 @@ export type PropDef = {
   alpha?: number;
   originY?: number; // default 1 (stands on the point); use 0.5 for spinning hubs
   spin?: number; // if set, rotates 360° forever over this many ms (windmill sails)
-  drift?: boolean; // gentle bob/drift (birds, gulls)
+  drift?: boolean; // gentle bob/drift across the sky
 };
 
 export type Level = {
