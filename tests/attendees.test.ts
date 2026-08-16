@@ -6,6 +6,7 @@ import {
   attendeeSlots,
   attending,
   partyFromAttendees,
+  slotsForNames,
   summarizeAllergies,
   summarizeAttendees,
   type AttendeeSlot,
@@ -203,4 +204,25 @@ test("each of them answers for themselves", () => {
   assert.equal(party.churchCount, 1);
   assert.equal(party.guestCount, 2);
   assert.equal(party.status, "ATTENDING");
+});
+
+test("a person being added holds their place before they have a name", () => {
+  const slots = slotsForNames(["Kitt", "Jan", ""], [
+    { position: 0, church: "ATTENDING", reception: "ATTENDING" },
+  ]);
+  assert.equal(slots.length, 3);
+  assert.equal(slots[2]!.name, "");
+  assert.equal(slots[2]!.church, "PENDING");
+  assert.equal(slots[0]!.church, "ATTENDING");
+});
+
+test("an answer stays with the person who gave it while names are edited", () => {
+  const stored = [
+    { position: 0, church: "DECLINED", reception: "DECLINED" },
+    { position: 1, church: "ATTENDING", reception: "ATTENDING", allergies: "Nuts" },
+  ];
+  const renamed = slotsForNames(["Kitt", "Jan Erik"], stored);
+  assert.equal(renamed[1]!.name, "Jan Erik");
+  assert.equal(renamed[1]!.reception, "ATTENDING");
+  assert.equal(renamed[1]!.allergies, "Nuts");
 });

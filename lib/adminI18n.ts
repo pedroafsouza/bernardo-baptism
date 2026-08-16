@@ -97,6 +97,11 @@ export type AdminDict = {
   answerFor: (name: string) => string;
   answerHint: string;
   allergyPlaceholder: string;
+  /** Building the guest list of an invitation one person at a time. */
+  addPerson: string;
+  removePerson: (name: string) => string;
+  personName: string;
+  personNamePlaceholder: string;
   kidsAtChurch: string;
   kidsAtParty: string;
   generateCode: string;
@@ -425,7 +430,8 @@ const da: AdminDict = {
   addGuest: "Tilføj gæst",
   guestAnswersHint:
     "Gæsterne svarer selv — og her kan du rette et enkelt svar. " +
-    "Skriv ”og” eller et komma mellem navnene, så får hver person sit eget svar.",
+    "Tilføj en person nedenfor, eller skriv ”og” eller et komma mellem navnene, " +
+    "så får hver person sit eget svar.",
   namePlaceholder: "Navn",
   adults: "Voksne (bekræftet)",
   kids: "Børn (bekræftet)",
@@ -446,6 +452,10 @@ const da: AdminDict = {
   answerFor: (name) => `Svar for ${name}`,
   answerHint: "Tryk for at svare på gæstens vegne",
   allergyPlaceholder: "Allergier",
+  addPerson: "Tilføj person",
+  removePerson: (name) => `Fjern ${name}`,
+  personName: "Navn",
+  personNamePlaceholder: "Navn på gæsten",
   kidsAtChurch: "Børn i kirken",
   kidsAtParty: "Børn til festen",
   generateCode: "Lav kode ud fra navnet",
@@ -669,7 +679,8 @@ const en: AdminDict = {
   addGuest: "Add guest",
   guestAnswersHint:
     "Guests answer for themselves — and here you can correct a single answer. " +
-    "Put “and” or a comma between the names and each person gets an answer of their own.",
+    "Add a person below, or put “and” or a comma between the names, and each " +
+    "person gets an answer of their own.",
   namePlaceholder: "Name",
   adults: "Adults (confirmed)",
   kids: "Kids (confirmed)",
@@ -690,6 +701,10 @@ const en: AdminDict = {
   answerFor: (name) => `Answer for ${name}`,
   answerHint: "Tap to answer on the guest's behalf",
   allergyPlaceholder: "Allergies",
+  addPerson: "Add person",
+  removePerson: (name) => `Remove ${name}`,
+  personName: "Name",
+  personNamePlaceholder: "The guest's name",
   kidsAtChurch: "Children at church",
   kidsAtParty: "Children at the party",
   generateCode: "Make a code from the name",

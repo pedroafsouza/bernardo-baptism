@@ -99,12 +99,26 @@ export function attendeeSlots(
   household: Household,
   stored: StoredAttendee[] = []
 ): AttendeeSlot[] {
+  return slotsForNames(adultNames(household), stored);
+}
+
+/**
+ * The same, for a list of people that is being edited rather than read off a
+ * household line — the admin panel lets an administrator add and rename people
+ * one at a time, and a person halfway through being typed has no name yet.
+ * Position is the person's identity, so an answer stays with whoever gave it
+ * even while the names around them change.
+ */
+export function slotsForNames(
+  names: string[],
+  stored: StoredAttendee[] = []
+): AttendeeSlot[] {
   const byPosition = new Map<number, StoredAttendee>();
   for (const row of stored) {
     if (Number.isInteger(row?.position)) byPosition.set(row.position, row);
   }
 
-  return adultNames(household).map((name, position) => {
+  return names.map((name, position) => {
     const row = byPosition.get(position);
     return {
       position,

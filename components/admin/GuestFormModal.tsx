@@ -6,12 +6,13 @@ import AnswerButtons from "@/components/admin/AnswerButtons";
 import type { AdminDict } from "@/lib/adminI18n";
 import { inviteCodeFromName } from "@/lib/inviteCode";
 import {
-  attendeeSlots,
   partyFromAttendees,
+  slotsForNames,
   type AttendeeSlot,
   type AttendeeStatus,
 } from "@/lib/attendees";
-import { countGuestNames } from "@/lib/names";
+import { countGuestNames, formatNameList, splitGuestNames } from "@/lib/names";
+import type { Lang } from "@/lib/lang";
 
 /**
  * What an administrator decides about a household: who they are and how many
@@ -48,6 +49,8 @@ export const emptyGuestForm: GuestFormValues = {
 
 type Props = {
   t: AdminDict;
+  /** The language the panel is being read in, used to join names into a line. */
+  lang: Lang;
   initial: GuestFormValues;
   groups: readonly string[];
   statuses: readonly string[];
@@ -68,6 +71,7 @@ const ZERO_KIDS = { church: 0, reception: 0 };
 
 export default function GuestFormModal({
   t,
+  lang,
   initial,
   groups,
   statuses,
@@ -76,40 +80,74 @@ export default function GuestFormModal({
   onClose,
 }: Props) {
   const [form, setForm] = useState<GuestFormValues>(initial);
+  // The people are held as a list of their own rather than read back off the
+  // household line, because a person who has just been added has no name yet
+  // and would otherwise disappear between two keystrokes.
+  const [names, setNames] = useState<string[]>(() => splitGuestNames(initial.name));
   const [saving, setSaving] = useState(false);
   const [answersChanged, setAnswersChanged] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const firstField = useRef<HTMLInputElement>(null);
 
-  // The people are read off the household line as it is typed, so adding "and
-  // Pedro" to a name puts Pedro on the invitation straight away, with his own
-  // answer to give. Answers already given stay with the person who gave them.
-  const people = attendeeSlots({ name: form.name, maxGuests: form.maxGuests }, form.attendees);
+  // Answers belong to a position, not to a name, so they stay with the person
+  // who gave them while the names around them are edited.
+  const people = slotsForNames(names, form.attendees);
+
+  /** The code proposed from the name, until somebody types one of their own. */
+  function codeFor(f: GuestFormValues, name: string): string {
+    const proposed = !f.guestCode || f.guestCode === inviteCodeFromName(f.name, takenCodes);
+    return f.id || !proposed ? f.guestCode : inviteCodeFromName(name, takenCodes);
+  }
+
+  /**
+   * The household line is written from the people on it, so adding "Bo" below
+   * "Kitt og Jan" addresses the invitation to all three. A seat set by hand
+   * above the head count is left alone; a list that fitted exactly keeps
+   * fitting exactly.
+   */
+  function changePeople(nextNames: string[], nextPeople?: AttendeeSlot[]) {
+    setNames(nextNames);
+    setForm((f) => {
+      const line = formatNameList(nextNames, lang);
+      const seats =
+        f.maxGuests === names.length ? nextNames.length : Math.max(f.maxGuests, nextNames.length);
+      const next: GuestFormValues = {
+        ...f,
+        name: line,
+        maxGuests: Math.min(Math.max(seats, 1), 10),
+        guestCode: codeFor(f, line),
+      };
+      if (!nextPeople) return next;
+      // Somebody has left the invitation, taking their answer with them, so the
+      // household's numbers have to be counted again.
+      return { ...next, attendees: nextPeople, status: partyFromAttendees(nextPeople, ZERO_KIDS).status };
+    });
+  }
+
+  function removePerson(position: number) {
+    setAnswersChanged(true);
+    changePeople(
+      names.filter((_, i) => i !== position),
+      people.filter((p) => p.position !== position).map((p, i) => ({ ...p, position: i }))
+    );
+  }
 
   function editPerson(position: number, change: Partial<AttendeeSlot>) {
     setAnswersChanged(true);
-    setForm((f) => {
-      const next = attendeeSlots({ name: f.name, maxGuests: f.maxGuests }, f.attendees).map((p) =>
-        p.position === position ? { ...p, ...change } : p
-      );
-      // The household's own status is read off its people, never set beside
-      // them: two answers that disagree would be one answer too many.
-      return { ...f, attendees: next, status: partyFromAttendees(next, ZERO_KIDS).status };
-    });
+    const next = people.map((p) => (p.position === position ? { ...p, ...change } : p));
+    // The household's own status is read off its people, never set beside
+    // them: two answers that disagree would be one answer too many.
+    setForm((f) => ({ ...f, attendees: next, status: partyFromAttendees(next, ZERO_KIDS).status }));
   }
 
   /** Answering for the whole household at once: everybody, both halves of the day. */
   function answerForEveryone(status: string) {
     setAnswersChanged(true);
-    setForm((f) => {
-      const said = (status === "ATTENDING" || status === "DECLINED"
-        ? status
-        : "PENDING") as AttendeeStatus;
-      const next = attendeeSlots({ name: f.name, maxGuests: f.maxGuests }, f.attendees).map(
-        (p) => ({ ...p, church: said, reception: said })
-      );
-      return { ...f, attendees: next, status };
-    });
+    const said = (status === "ATTENDING" || status === "DECLINED"
+      ? status
+      : "PENDING") as AttendeeStatus;
+    const next = people.map((p) => ({ ...p, church: said, reception: said }));
+    setForm((f) => ({ ...f, attendees: next, status }));
   }
 
   useEffect(() => {
@@ -129,9 +167,20 @@ export default function GuestFormModal({
     setError(null);
     setSaving(true);
     try {
-      // What is on screen is what is saved, including the people who were left
-      // exactly as they were found.
-      const ok = await onSave({ ...form, attendees: people }, answersChanged);
+      // What is on screen is what is saved. A person who was added but never
+      // named is not on the invitation, and does not hold a seat either.
+      const named = people
+        .filter((p) => p.name.trim().length > 0)
+        .map((p, position) => ({ ...p, position }));
+      const blanks = people.length - named.length;
+      const ok = await onSave(
+        {
+          ...form,
+          attendees: named,
+          maxGuests: Math.max(named.length, form.maxGuests - blanks, 1),
+        },
+        answersChanged
+      );
       if (!ok) setError(t.couldNotSave);
     } catch (err: any) {
       setError(err?.message || t.couldNotSave);
@@ -209,23 +258,21 @@ export default function GuestFormModal({
               value={form.name}
               onChange={(e) => {
                 const name = e.target.value;
-                setForm((f) => {
+                // The line is still the quickest way to write a household: the
+                // people below it follow along as it is typed.
+                setNames(splitGuestNames(name));
+                setForm((f) => ({
+                  ...f,
+                  name,
+                  // "and", "og", "e" and a comma each name another person, and
+                  // each of them answers for themselves — so the invitation
+                  // grows a seat rather than leaving somebody unable to reply.
+                  maxGuests: Math.max(f.maxGuests, Math.min(countGuestNames(name), 10)),
                   // A new household gets a code proposed as you type, until
                   // somebody types their own; an existing one keeps the code its
                   // guests already have in their pocket.
-                  const proposed =
-                    !f.guestCode || f.guestCode === inviteCodeFromName(f.name, takenCodes);
-                  return {
-                    ...f,
-                    name,
-                    // "and", "og", "e" and a comma each name another person, and
-                    // each of them answers for themselves — so the invitation
-                    // grows a seat rather than leaving somebody unable to reply.
-                    maxGuests: Math.max(f.maxGuests, Math.min(countGuestNames(name), 10)),
-                    guestCode:
-                      f.id || !proposed ? f.guestCode : inviteCodeFromName(name, takenCodes),
-                  };
-                });
+                  guestCode: codeFor(f, name),
+                }));
               }}
               placeholder={t.namePlaceholder}
               className="border-4 border-black p-2 text-[14px] w-full"
@@ -300,9 +347,10 @@ export default function GuestFormModal({
         {/*
           The household's numbers are read off these answers, so this is where a
           single person is corrected: one of them can come to the church while
-          the other cannot, and either can be left unanswered.
+          the other cannot, and either can be left unanswered. It is also where
+          an invitation grows: a name typed here is added to the line above.
         */}
-        {form.name.trim().length > 0 && (
+        {people.length > 0 && (
           <section className="mt-5 border-t-4 border-black pt-4">
             <h3 className="text-[14px] flex items-center gap-2">
               <Icon name="guests" className="h-4 w-4" />
@@ -315,9 +363,28 @@ export default function GuestFormModal({
                   key={person.position}
                   className="flex flex-wrap items-start gap-2 text-[13px]"
                 >
-                  <span className="w-full sm:w-[7rem] sm:shrink-0 font-bold break-words sm:pt-1">
-                    {person.name}
-                  </span>
+                  <div className="flex items-center gap-1 w-full sm:w-[9rem] sm:shrink-0">
+                    <input
+                      value={person.name}
+                      onChange={(e) =>
+                        changePeople(
+                          names.map((n, i) => (i === person.position ? e.target.value : n))
+                        )
+                      }
+                      placeholder={t.personNamePlaceholder}
+                      aria-label={t.personName}
+                      className="border-2 border-black p-1 text-[13px] w-full min-w-0"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removePerson(person.position)}
+                      title={t.removePerson(person.name || t.personName)}
+                      aria-label={t.removePerson(person.name || t.personName)}
+                      className="pixel-btn border-2 border-black bg-pastel-pink px-1.5 py-1 shrink-0"
+                    >
+                      <Icon name="trash" className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                   {/* Every answer starts at the same left edge, so a row reads
                       as "this person" on the left and "these choices" on the
                       right however far the names wrap. */}
@@ -356,6 +423,13 @@ export default function GuestFormModal({
                 </li>
               ))}
             </ul>
+            <button
+              type="button"
+              onClick={() => changePeople([...names, ""])}
+              className="pixel-btn bg-pastel-blue border-2 border-black py-1.5 px-3 text-[13px] flex items-center gap-2 mt-3"
+            >
+              <Icon name="addGuest" className="h-4 w-4" /> {t.addPerson}
+            </button>
           </section>
         )}
 

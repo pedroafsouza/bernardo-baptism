@@ -1205,6 +1205,7 @@ function AdminPageInner() {
       {guestForm && (
         <GuestFormModal
           t={t}
+          lang={lang}
           initial={guestForm}
           groups={GROUPS}
           statuses={STATUSES}
