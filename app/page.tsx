@@ -167,13 +167,13 @@ function InvitationInner() {
     return (
       <main className="game-root flex items-center justify-center p-6 text-center">
         <div className="pixel-border bg-white border-4 border-black p-6 max-w-sm text-black">
-          <div className="text-3xl mb-3 text-pastel-purple">
+          <div className="text-3xl mb-3 text-pastel-plum">
             <Icon name="cross" />
           </div>
           <h1 className="text-[19px] leading-relaxed mb-3">{t.noCodeTitle}</h1>
           <p className="text-[14px] leading-relaxed opacity-80">
             {t.noCodeBody} <br />
-            <span className="text-pastel-purple">{t.noCodeExample}</span>
+            <span className="text-pastel-plum">{t.noCodeExample}</span>
           </p>
           <a
             href={`/?code=${DEMO_CODE}`}
@@ -200,7 +200,7 @@ function InvitationInner() {
     return (
       <main className="game-root flex items-center justify-center p-6 text-center">
         <div className="pixel-border bg-white border-4 border-black p-6 max-w-sm text-black">
-          <div className="text-3xl mb-3 text-pastel-purple">
+          <div className="text-3xl mb-3 text-pastel-plum">
             <Icon name="question" />
           </div>
           <h1 className="text-[19px] leading-relaxed mb-2">{t.notFoundTitle}</h1>
@@ -239,7 +239,7 @@ function InvitationInner() {
       )}
 
       {demo && !showIntro && !showModal && (
-        <span className="absolute top-3 left-3 z-30 bg-pastel-purple text-white border-4 border-black text-[12px] px-2 py-1">
+        <span className="absolute top-3 left-3 z-30 bg-pastel-purple text-black border-4 border-black text-[12px] px-2 py-1">
           {t.demoBadge}
         </span>
       )}

@@ -18,6 +18,10 @@ const config: Config = {
           yellow: "#fff3c4",
           purple: "#e1bee7",
           cream: "#fdf6ec",
+          // The pastels are backgrounds. Text and icons in the same family need
+          // a shade that actually reads on cream, so they get their own.
+          plum: "#6a4b7a",
+          moss: "#4f6b50",
         },
       },
     },

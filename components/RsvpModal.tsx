@@ -85,15 +85,15 @@ function AllergyAccordion({
         aria-expanded={expanded}
         aria-controls={`${id}-panel`}
         onClick={onToggle}
-        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-[13px]"
+        className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-[13px]"
       >
         <span className="flex items-center gap-2">
-          <Icon name="warning" className="h-4 w-4 shrink-0 text-yellow-600" />
+          <Icon name="warning" className="h-4 w-4 shrink-0 text-amber-700" />
           <span>{title}</span>
         </span>
         <span className="flex shrink-0 items-center gap-2">
           {!expanded && (
-            <span className="max-w-[9rem] truncate opacity-60">
+            <span className="max-w-[9rem] truncate opacity-75">
               {value.trim() || emptyLabel}
             </span>
           )}
@@ -101,7 +101,7 @@ function AllergyAccordion({
         </span>
       </button>
       {expanded && (
-        <div id={`${id}-panel`} className="border-t-2 border-black/20 p-2">
+        <div id={`${id}-panel`} className="border-t-2 border-black/20 p-3">
           <textarea
             value={value}
             maxLength={MAX_ALLERGY_LENGTH}
@@ -258,7 +258,7 @@ export default function RsvpModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
       <div
         ref={bodyRef}
-        className="pixel-border relative w-full max-w-md bg-pastel-cream border-4 border-black p-5 sm:p-6 max-h-[calc(100dvh-2rem)] overflow-y-auto"
+        className="pixel-border relative w-full max-w-md bg-pastel-cream border-4 border-black p-5 sm:p-7 max-h-[calc(100dvh-2rem)] overflow-y-auto"
       >
         <button
           onClick={onClose}
@@ -269,20 +269,20 @@ export default function RsvpModal({
         </button>
 
         <div className="text-black">
-          <div className="text-center mb-4">
-            <div className="flex items-center justify-center gap-3 text-2xl mb-2">
+          <div className="text-center mb-6">
+            <div className="flex items-center justify-center gap-4 text-2xl mb-3">
               <Icon name="baby" className="text-[#d98ba5]" />
-              <Icon name="cross" className="text-pastel-purple" />
+              <Icon name="cross" className="text-pastel-plum" />
             </div>
             <h1 className="text-[21px] sm:text-[24px] leading-relaxed">
               {t.rsvpWelcome(name)}
             </h1>
-            <p className="text-[14px] sm:text-[16px] mt-2 text-pastel-purple">
+            <p className="text-[14px] sm:text-[16px] mt-3 text-pastel-plum">
               {t.invitedTo}
             </p>
           </div>
 
-          <div role="tablist" className="flex gap-1 mb-4">
+          <div role="tablist" className="flex gap-2 mb-6">
             {([
               ["rsvp", t.tabRsvp, "mail"],
               ["race", t.tabCompetition, "trophy"],
@@ -292,7 +292,7 @@ export default function RsvpModal({
                 role="tab"
                 aria-selected={tab === id}
                 onClick={() => setTab(id)}
-                className={`pixel-btn flex-1 border-4 border-black py-2 px-2 text-[14px] flex items-center justify-center gap-2 ${
+                className={`pixel-btn flex-1 border-4 border-black py-2.5 px-3 text-[14px] flex items-center justify-center gap-2 ${
                   tab === id ? "bg-pastel-green" : "bg-white"
                 }`}
               >
@@ -315,10 +315,10 @@ export default function RsvpModal({
               />
             </div>
           ) : !result ? (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-6">
             {/* The reply is a wizard too: celebrate, read the invitation, answer. */}
             <div
-              className="flex items-center justify-center gap-2"
+              className="flex items-center justify-center gap-2.5"
               role="status"
               aria-label={t.stepOf(stepIndex + 1, steps.length)}
             >
@@ -334,17 +334,17 @@ export default function RsvpModal({
             </div>
 
             {demo && (
-              <p className="bg-pastel-purple text-white border-4 border-black p-2 text-[13px] leading-relaxed flex items-center gap-2">
+              <p className="bg-pastel-purple text-black border-4 border-black px-3 py-2.5 text-[13px] leading-relaxed flex items-center gap-2.5">
                 <Icon name="warning" className="h-4 w-4 shrink-0" /> {t.demoNotice}
               </p>
             )}
 
             {step === "congrats" && (
-              <section className="flex flex-col gap-3 text-center">
+              <section className="flex flex-col gap-4 text-center">
                 <div className="text-4xl">
                   <Icon
                     name={run?.finished ? "celebrate" : "star"}
-                    className="mx-auto text-yellow-500"
+                    className="mx-auto text-amber-600"
                   />
                 </div>
                 <h2 className="text-[19px] leading-relaxed">
@@ -355,19 +355,19 @@ export default function RsvpModal({
                 </p>
 
                 {run && (
-                  <div className="bg-white border-4 border-black p-3 text-left text-[14px] leading-relaxed">
+                  <div className="bg-white border-4 border-black p-4 text-left text-[14px] leading-relaxed">
                     <div className="flex items-center gap-2 font-bold mb-2">
-                      <Icon name="star" className="h-4 w-4 shrink-0 text-yellow-500" />
-                      {t.yourScore}: <span className="text-pastel-purple">{run.score}</span>{" "}
+                      <Icon name="star" className="h-4 w-4 shrink-0 text-amber-600" />
+                      {t.yourScore}: <span className="text-pastel-plum">{run.score}</span>{" "}
                       {t.points}
                     </div>
-                    <div className="flex gap-4">
+                    <div className="flex flex-wrap gap-x-5 gap-y-1.5">
                       <span className="flex items-center gap-1.5">
                         <Icon name="bone" className="h-4 w-4 shrink-0" /> {t.bonesCollected}:{" "}
                         {run.bones}
                       </span>
                       <span className="flex items-center gap-1.5">
-                        <Icon name="cross" className="h-4 w-4 shrink-0 text-pastel-purple" />{" "}
+                        <Icon name="cross" className="h-4 w-4 shrink-0 text-pastel-plum" />{" "}
                         {t.blessingsFound}: {run.blessings}/3
                       </span>
                     </div>
@@ -384,46 +384,46 @@ export default function RsvpModal({
             )}
 
             {step === "invitation" && (
-              <section className="flex flex-col gap-3">
+              <section className="flex flex-col gap-4">
                 <h2 className="text-[15px] leading-relaxed text-center">{t.stepInvitation}</h2>
-                <div className="bg-white border-4 border-black p-3 text-[14px] sm:text-[16px] leading-relaxed space-y-2">
+                <div className="bg-white border-4 border-black p-4 text-[14px] sm:text-[16px] leading-relaxed space-y-3">
                   <p className="flex items-start gap-2">
-                    <Icon name="baby" className="mt-0.5 h-4 w-4 shrink-0 text-pastel-purple" />
+                    <Icon name="baby" className="mt-0.5 h-4 w-4 shrink-0 text-pastel-plum" />
                     <span>
-                      <span className="text-pastel-purple">{t.child}:</span> {EVENT.child}
+                      <span className="text-pastel-plum">{t.child}:</span> {EVENT.child}
                     </span>
                   </p>
                   <p className="flex items-start gap-2">
-                    <Icon name="cake" className="mt-0.5 h-4 w-4 shrink-0 text-pastel-purple" />
+                    <Icon name="cake" className="mt-0.5 h-4 w-4 shrink-0 text-pastel-plum" />
                     <span>
-                      <span className="text-pastel-purple">{t.birthday}:</span> {EVENT.birthday}
+                      <span className="text-pastel-plum">{t.birthday}:</span> {EVENT.birthday}
                     </span>
                   </p>
                   <p className="flex items-start gap-2">
-                    <Icon name="mother" className="mt-0.5 h-4 w-4 shrink-0 text-pastel-purple" />
+                    <Icon name="mother" className="mt-0.5 h-4 w-4 shrink-0 text-pastel-plum" />
                     <span>
-                      <span className="text-pastel-purple">{t.mother}:</span> {EVENT.mother}
+                      <span className="text-pastel-plum">{t.mother}:</span> {EVENT.mother}
                     </span>
                   </p>
                   <p className="flex items-start gap-2">
-                    <Icon name="father" className="mt-0.5 h-4 w-4 shrink-0 text-pastel-purple" />
+                    <Icon name="father" className="mt-0.5 h-4 w-4 shrink-0 text-pastel-plum" />
                     <span>
-                      <span className="text-pastel-purple">{t.father}:</span> {EVENT.father}
+                      <span className="text-pastel-plum">{t.father}:</span> {EVENT.father}
                     </span>
                   </p>
-                  <hr className="border-black/20" />
+                  <hr className="border-black/20 !my-4" />
                   <p className="flex items-start gap-2">
-                    <Icon name="church" className="mt-0.5 h-4 w-4 shrink-0 text-pastel-purple" />
+                    <Icon name="church" className="mt-0.5 h-4 w-4 shrink-0 text-pastel-plum" />
                     <span>
-                      <span className="text-pastel-purple">{t.ceremony}:</span> {ceremonyTime}
+                      <span className="text-pastel-plum">{t.ceremony}:</span> {ceremonyTime}
                       <br />
                       <span className="opacity-70">{EVENT.ceremonyPlace}</span>
                     </span>
                   </p>
                   <p className="flex items-start gap-2">
-                    <Icon name="celebrate" className="mt-0.5 h-4 w-4 shrink-0 text-pastel-purple" />
+                    <Icon name="celebrate" className="mt-0.5 h-4 w-4 shrink-0 text-pastel-plum" />
                     <span>
-                      <span className="text-pastel-purple">{t.reception}:</span> {receptionTime}
+                      <span className="text-pastel-plum">{t.reception}:</span> {receptionTime}
                       <br />
                       <span className="opacity-70">{EVENT.receptionPlace}</span>
                     </span>
@@ -433,27 +433,27 @@ export default function RsvpModal({
             )}
 
             {step === "party" && (
-              <section className="flex flex-col gap-3">
+              <section className="flex flex-col gap-4">
                 <div className="text-center">
                   <h2 className="text-[15px] leading-relaxed">{t.whoIsComing}</h2>
-                  <p className="text-[12px] opacity-70">{t.whoIsComingHint}</p>
+                  <p className="text-[12px] opacity-75 mt-1.5 leading-relaxed">{t.whoIsComingHint}</p>
                 </div>
 
                 {/* One invitation, one answer per person. */}
-                <ul className="flex flex-col gap-2">
+                <ul className="flex flex-col gap-3">
                   {people.map((person) => (
                     <li
                       key={person.position}
-                      className="border-4 border-black bg-white p-2 flex flex-col gap-2"
+                      className="border-4 border-black bg-white p-3 flex flex-col gap-3"
                     >
-                      <div className="flex items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
                         <span className="text-[15px] break-words">{person.name}</span>
                         <span className="flex shrink-0 gap-1">
                           <button
                             type="button"
                             aria-pressed={person.status === "ATTENDING"}
                             onClick={() => answer(person.position, true)}
-                            className={`pixel-btn flex items-center gap-1 border-2 border-black px-2 py-1 text-[13px] ${
+                            className={`pixel-btn flex items-center gap-1.5 border-2 border-black px-3 py-1.5 text-[13px] ${
                               person.status === "ATTENDING" ? "bg-pastel-green" : "bg-white opacity-70"
                             }`}
                           >
@@ -464,7 +464,7 @@ export default function RsvpModal({
                             type="button"
                             aria-pressed={person.status === "DECLINED"}
                             onClick={() => answer(person.position, false)}
-                            className={`pixel-btn flex items-center gap-1 border-2 border-black px-2 py-1 text-[13px] ${
+                            className={`pixel-btn flex items-center gap-1.5 border-2 border-black px-3 py-1.5 text-[13px] ${
                               person.status === "DECLINED" ? "bg-pastel-pink" : "bg-white opacity-70"
                             }`}
                           >
@@ -490,19 +490,19 @@ export default function RsvpModal({
                 </ul>
 
                 {maxKids > 0 ? (
-                  <div className="border-4 border-black bg-white p-2 flex flex-col gap-2">
+                  <div className="border-4 border-black bg-white p-3 flex flex-col gap-3">
                     <label className="block text-[14px]">
                       <Icon name="child" className="icon-inline mr-1.5" />
                       {t.kidsCount}
                     </label>
-                    <div className="flex gap-1 flex-wrap">
+                    <div className="flex gap-2 flex-wrap">
                       {Array.from({ length: maxKids + 1 }, (_, i) => i).map((n) => (
                         <button
                           key={n}
                           type="button"
                           aria-pressed={kids === n}
                           onClick={() => setKids(n)}
-                          className={`pixel-btn w-10 h-10 border-4 border-black text-[17px] ${
+                          className={`pixel-btn w-11 h-11 border-4 border-black text-[17px] ${
                             kids === n ? "bg-pastel-green" : "bg-white"
                           }`}
                         >
@@ -510,9 +510,9 @@ export default function RsvpModal({
                         </button>
                       ))}
                     </div>
-                    <p className="text-[12px] opacity-60">{t.maxKidsNote(maxKids)}</p>
+                    <p className="text-[12px] opacity-75 -mt-1 leading-relaxed">{t.maxKidsNote(maxKids)}</p>
                     {/* Babies are not catered for, so they are not counted either. */}
-                    <p className="text-[12px] flex items-start gap-2 text-pastel-purple">
+                    <p className="text-[12px] flex items-start gap-2 leading-relaxed text-pastel-plum">
                       <Icon name="warning" className="mt-0.5 h-4 w-4 shrink-0" />
                       {t.kidsUnderOne}
                     </p>
@@ -543,7 +543,7 @@ export default function RsvpModal({
               </section>
             )}
 
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-3 pt-1">
               {step === "party" ? (
                 <button
                   disabled={submitting}
@@ -584,7 +584,7 @@ export default function RsvpModal({
               <Icon
                 name={result === "ATTENDING" ? "celebrate" : "mail"}
                 className={`mx-auto ${
-                  result === "ATTENDING" ? "text-yellow-500" : "text-pastel-purple"
+                  result === "ATTENDING" ? "text-amber-600" : "text-pastel-plum"
                 }`}
               />
             </div>
@@ -612,7 +612,7 @@ export default function RsvpModal({
               </div>
             )}
             {demo && (
-              <p className="mt-3 text-[13px] leading-relaxed text-pastel-purple">
+              <p className="mt-3 text-[13px] leading-relaxed text-pastel-plum">
                 {t.demoNotice}
               </p>
             )}

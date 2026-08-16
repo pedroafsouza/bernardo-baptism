@@ -66,12 +66,12 @@ export default function IntroOverlay({
   return (
     <div className="absolute inset-0 z-40 flex items-center justify-center p-4 bg-black/45 backdrop-blur-sm">
       <div className="pixel-border bg-white border-4 border-black w-full max-w-md max-h-[92dvh] overflow-y-auto text-black">
-        <div className="flex flex-col gap-4 p-5 sm:p-6">
+        <div className="flex flex-col gap-6 p-5 sm:p-7">
           {/* Progress: one dot per step, so the guest can see how short this is. */}
           <div className="grid grid-cols-[2.5rem_1fr_2.5rem] items-center">
             <span />
             <div
-              className="flex items-center justify-center gap-2"
+              className="flex items-center justify-center gap-2.5"
               role="status"
               aria-label={t.stepOf(index + 1, steps.length)}
             >
@@ -100,12 +100,12 @@ export default function IntroOverlay({
           </div>
 
           {step === "lang" && (
-            <section className="flex flex-col gap-3">
+            <section className="flex flex-col gap-4">
               <h2 className="flex items-center justify-center gap-2 text-[15px] leading-relaxed text-center">
-                <Icon name="language" className="icon-inline opacity-60" />
+                <Icon name="language" className="icon-inline opacity-75" />
                 {LANGS.map((l) => DICTS[l].language).join(" · ")}
               </h2>
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-3">
                 {LANGS.map((l) => (
                   <button
                     key={l}
@@ -116,7 +116,7 @@ export default function IntroOverlay({
                     }`}
                   >
                     <span>{LANG_LABEL[l]}</span>
-                    <Icon name="right" className="h-4 w-4 shrink-0 opacity-60" />
+                    <Icon name="right" className="h-4 w-4 shrink-0 opacity-75" />
                   </button>
                 ))}
               </div>
@@ -124,14 +124,14 @@ export default function IntroOverlay({
           )}
 
           {step === "start" && (
-            <section className="flex flex-col items-center gap-3 text-center">
-              <div className="flex items-center justify-center gap-3 text-2xl text-pastel-purple">
+            <section className="flex flex-col items-center gap-4 text-center">
+              <div className="flex items-center justify-center gap-4 text-2xl text-pastel-plum">
                 <Icon name="dog" className="text-[#a58e6f]" />
                 <Icon name="baby" className="text-[#d98ba5]" />
                 <Icon name="cross" />
               </div>
               <h1 className="text-[19px] leading-relaxed">{t.title}</h1>
-              <p className="text-[14px] leading-relaxed text-pastel-purple">
+              <p className="text-[14px] leading-relaxed text-pastel-plum">
                 {t.welcome(name)}
               </p>
               <div className="w-full">
@@ -145,7 +145,7 @@ export default function IntroOverlay({
           )}
 
           {step === "story" && (
-            <section className="flex flex-col gap-3">
+            <section className="flex flex-col gap-4">
               <h2 className="text-[15px] leading-relaxed text-center">{t.storyTitle}</h2>
               <BernardoSays>
                 {t.bernardoIntro.church.trim()}
@@ -155,7 +155,7 @@ export default function IntroOverlay({
                 {t.oscarIntro.p1}
                 <b>{t.oscarIntro.name}</b>
                 {t.oscarIntro.p2}
-                <span className="text-yellow-600 whitespace-nowrap">
+                <span className="text-amber-700 whitespace-nowrap">
                   {t.oscarIntro.blessings} <Icon name="cross" className="icon-inline" />
                 </span>
                 {t.oscarIntro.p3}
@@ -165,9 +165,9 @@ export default function IntroOverlay({
                 {t.oscarIntro.p4}
                 {t.oscarIntro.daily}
               </OscarSays>
-              <div className="border-2 border-black bg-pastel-cream p-3 text-left text-[13px] leading-relaxed">
-                <div className="mb-1 flex items-center gap-2 font-bold">
-                  <Icon name="cross" className="h-4 w-4 shrink-0 text-yellow-600" />
+              <div className="border-2 border-black bg-pastel-cream p-4 text-left text-[13px] leading-relaxed">
+                <div className="mb-2 flex items-center gap-2 font-bold">
+                  <Icon name="cross" className="h-4 w-4 shrink-0 text-amber-700" />
                   <span>{t.goalTitle}</span>
                 </div>
                 <p>{t.goalText}</p>
@@ -176,12 +176,12 @@ export default function IntroOverlay({
           )}
 
           {step === "controls" && (
-            <section className="flex flex-col gap-3">
+            <section className="flex flex-col gap-4">
               <h2 className="flex items-center justify-center gap-2 text-[15px] leading-relaxed">
-                <Icon name="keyboard" className="icon-inline opacity-60" />
+                <Icon name="keyboard" className="icon-inline opacity-75" />
                 {t.howToPlay}
               </h2>
-              <ul className="grid grid-cols-[3.25rem_1fr] items-center gap-x-3 gap-y-2 border-2 border-black bg-pastel-cream p-3 text-left text-[13px] leading-relaxed">
+              <ul className="grid grid-cols-[3.25rem_1fr] items-center gap-x-4 gap-y-3 border-2 border-black bg-pastel-cream p-4 text-left text-[13px] leading-relaxed">
                 <li className="flex items-center justify-center gap-1" aria-hidden>
                   <Icon name="left" className="h-4 w-4" />
                   <Icon name="right" className="h-4 w-4" />
@@ -194,7 +194,7 @@ export default function IntroOverlay({
                 <li>{t.howJump}</li>
 
                 <li className="flex items-center justify-center" aria-hidden>
-                  <Icon name="cross" className="h-4 w-4 text-yellow-600" />
+                  <Icon name="cross" className="h-4 w-4 text-amber-700" />
                 </li>
                 <li>{t.howCrosses}</li>
 
@@ -209,7 +209,7 @@ export default function IntroOverlay({
 
           {/* One primary action per step, with the quiet ones on a shared row. */}
           {step !== "lang" && (
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-3 pt-1">
               <button
                 onClick={step === "controls" ? onPlay : goNext}
                 className="pixel-btn flex items-center justify-center gap-2 border-4 border-black bg-pastel-green py-3 text-[16px] text-black"

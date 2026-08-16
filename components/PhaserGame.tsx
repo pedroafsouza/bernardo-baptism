@@ -309,7 +309,7 @@ export default function PhaserGame({
       <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
         <div className="bg-white/90 border-4 border-black px-3 py-2 text-[16px] sm:text-[18px] text-black flex gap-4">
           <span className="flex items-center gap-1.5">
-            <Icon name="cross" className="text-pastel-purple" /> {blessings}/3
+            <Icon name="cross" className="text-pastel-plum" /> {blessings}/3
           </span>
           <span className="flex items-center gap-1.5" title={t.bonesTooltip}>
             <Icon name="bone" /> {coins}
