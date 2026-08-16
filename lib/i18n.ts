@@ -45,6 +45,15 @@ type Dict = {
   skip: string;
   language: string;
 
+  /** The intro wizard: one decision per step instead of one long wall of text. */
+  chooseLanguage: string;
+  storyTitle: string;
+  goalTitle: string;
+  goalText: string;
+  next: string;
+  back: string;
+  stepOf: (current: number, total: number) => string;
+
   loading: string;
   loadingGame: string;
   loadingWorld: string;
@@ -141,6 +150,14 @@ const da: Dict = {
   skipToAnswer: "Spring til svar",
   skip: "Spring over",
   language: "Sprog",
+
+  chooseLanguage: "Vælg dit sprog",
+  storyTitle: "Historien",
+  goalTitle: "Dit mål",
+  goalText: "Saml de 3 hellige velsignelser, så kirkedøren åbner — og snup Oscars ben undervejs.",
+  next: "Videre",
+  back: "Tilbage",
+  stepOf: (c, total) => `Trin ${c} af ${total}`,
 
   loading: "Indlæser…",
   loadingGame: "Indlæser spil…",
@@ -241,6 +258,14 @@ const en: Dict = {
   skip: "Skip",
   language: "Language",
 
+  chooseLanguage: "Choose your language",
+  storyTitle: "The story",
+  goalTitle: "Your goal",
+  goalText: "Collect the 3 holy blessings to open the church door — and grab Oscar's bones along the way.",
+  next: "Next",
+  back: "Back",
+  stepOf: (c, total) => `Step ${c} of ${total}`,
+
   loading: "Loading…",
   loadingGame: "Loading game…",
   loadingWorld: "Loading world…",
@@ -340,6 +365,14 @@ const pt: Dict = {
   skip: "Pular",
   language: "Idioma",
 
+  chooseLanguage: "Escolha o seu idioma",
+  storyTitle: "A história",
+  goalTitle: "Seu objetivo",
+  goalText: "Junte as 3 bênçãos sagradas para a porta da igreja abrir — e pegue os ossos do Oscar pelo caminho.",
+  next: "Continuar",
+  back: "Voltar",
+  stepOf: (c, total) => `Passo ${c} de ${total}`,
+
   loading: "Carregando…",
   loadingGame: "Carregando o jogo…",
   loadingWorld: "Carregando o mundo…",
@@ -423,7 +456,10 @@ export function isLang(value: unknown): value is Lang {
  */
 export function useLang() {
   const [param, setParam] = useLangParam();
-  const lang: Lang = isLang(param) ? param : DEFAULT_LANG;
+  // Whether the link itself carried a language decides if the intro has to ask
+  // for one — an invitation sent in Danish should never open on a language step.
+  const fromLink = isLang(param);
+  const lang: Lang = fromLink ? param : DEFAULT_LANG;
 
   const setLang = useCallback(
     (next: Lang) => {
@@ -432,5 +468,5 @@ export function useLang() {
     [setParam]
   );
 
-  return { lang, setLang, t: DICTS[lang] };
+  return { lang, setLang, t: DICTS[lang], langFromLink: fromLink };
 }

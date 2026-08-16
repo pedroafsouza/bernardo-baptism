@@ -34,7 +34,7 @@ type Guest = {
 function InvitationInner() {
   const params = useSearchParams();
   const code = params.get("code");
-  const { lang, setLang, t } = useLang();
+  const { lang, setLang, t, langFromLink } = useLang();
   const [guest, setGuest] = useState<Guest | null>(null);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -237,6 +237,7 @@ function InvitationInner() {
         <IntroOverlay
           name={guest.name}
           lang={lang}
+          askLanguage={!langFromLink}
           onLangChange={setLang}
           onPlay={() => setShowIntro(false)}
           onSkip={() => {

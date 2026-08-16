@@ -65,6 +65,17 @@ select,
   user-select: text;
 }
 
+/* Lucide icons are SVGs, and Tailwind's preflight renders every `svg` as a
+   block element — an icon used mid-sentence would otherwise break the line and
+   tower over the text. `icon-inline` puts it back into the text flow at the
+   size of the surrounding copy. */
+.icon-inline {
+  display: inline-block;
+  width: 1.15em;
+  height: 1.15em;
+  vertical-align: -0.2em;
+}
+
 .pixel-border {
   box-shadow:
     0 0 0 4px #000,
