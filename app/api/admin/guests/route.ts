@@ -33,6 +33,77 @@ function stampSentAt(sent: boolean, previous: Date | null | undefined): Date | n
   return previous ?? new Date();
 }
 
+/**
+ * Resolves the head counts for a household.
+ *
+ * The numbers belong to the guests, not to the invitation: they are either
+ * posted outright (an answer given on their behalf), carried over from what the
+ * household already said, or — when an administrator moves the household status
+ * itself — spread from that verdict. Leaving them out of a payload therefore
+ * edits the invitation without touching anybody's answer.
+ */
+function resolveCounts(
+  raw: Record<string, unknown>,
+  capacity: { maxGuests: number; maxKids: number },
+  status: string,
+  existing: {
+    status: string;
+    guestCount: number;
+    kids: number;
+    churchCount: number;
+    churchKids: number;
+  } | null
+) {
+  // A household marked as coming fills its invitation; one set back to pending
+  // or turned down brings nobody until it answers for itself.
+  const verdict =
+    status === "ATTENDING"
+      ? { adults: capacity.maxGuests, kids: capacity.maxKids }
+      : { adults: 0, kids: 0 };
+
+  const stored =
+    existing && existing.status === status
+      ? {
+          guestCount: existing.guestCount,
+          kids: existing.kids,
+          churchCount: existing.churchCount,
+          churchKids: existing.churchKids,
+        }
+      : {
+          guestCount: verdict.adults,
+          kids: verdict.kids,
+          churchCount: verdict.adults,
+          churchKids: verdict.kids,
+        };
+
+  const pick = (key: string, fallback: number) =>
+    raw[key] === undefined ? fallback : safeInt(raw[key], 0, 10, fallback);
+
+  const party = clampParty(
+    {
+      guestCount: pick("guestCount", stored.guestCount),
+      kids: pick("kids", stored.kids),
+    },
+    capacity
+  );
+  // The church is counted on its own — some come to the christening only, and
+  // some only to the party.
+  const church = clampParty(
+    {
+      guestCount: pick("churchCount", stored.churchCount),
+      kids: pick("churchKids", stored.churchKids),
+    },
+    capacity
+  );
+
+  return {
+    guestCount: party.guestCount,
+    kids: party.kids,
+    churchCount: church.guestCount,
+    churchKids: church.kids,
+  };
+}
+
 function throttle(req: NextRequest) {
   const limit = rateLimit(`admin:${clientIp(req)}`, RATE_RULES.admin);
   if (limit.ok) return null;
@@ -176,6 +247,17 @@ export async function POST(req: NextRequest) {
     const maxGuests = safeInt(raw.maxGuests, 1, 10, 1);
     const maxKids = safeInt(raw.maxKids, 0, 10, 0);
 
+    // The household has to be read before it is written: the head counts are
+    // the guests' own answer, so a payload that leaves them out must carry the
+    // stored ones forward rather than reset them.
+    const existing = id
+      ? await prisma.guest.findUnique({ where: { id } })
+      : await prisma.guest.findUnique({ where: { guestCode } });
+
+    if (id && !existing) {
+      return NextResponse.json({ error: "Gæst ikke fundet" }, { status: 404 });
+    }
+
     const data = {
       guestCode,
       name,
@@ -183,53 +265,26 @@ export async function POST(req: NextRequest) {
       status,
       maxGuests,
       maxKids,
-      ...clampParty(
-        {
-          guestCount: safeInt(raw.guestCount, 0, 10, 1),
-          kids: safeInt(raw.kids, 0, 10, 0),
-        },
-        { maxGuests, maxKids }
-      ),
-      // The church is counted on its own — some come to the christening only,
-      // and some only to the party.
-      ...(() => {
-        const church = clampParty(
-          {
-            guestCount: safeInt(raw.churchCount, 0, 10, 0),
-            kids: safeInt(raw.churchKids, 0, 10, 0),
-          },
-          { maxGuests, maxKids }
-        );
-        return { churchCount: church.guestCount, churchKids: church.kids };
-      })(),
+      ...resolveCounts(raw, { maxGuests, maxKids }, status, existing),
       likely: raw.likely === undefined ? true : Boolean(raw.likely),
       inviteSent: Boolean(raw.inviteSent),
     };
 
     let guest;
-    let created = false;
-    let previous: { status: string; churchCount: number; guestCount: number } | null = null;
+    const created = !existing;
+    const previous = existing;
     if (id) {
-      const existing = await prisma.guest.findUnique({ where: { id } });
-      if (!existing) {
-        return NextResponse.json({ error: "Gæst ikke fundet" }, { status: 404 });
-      }
-      previous = existing;
       guest = await prisma.guest.update({
         where: { id },
-        data: { ...data, inviteSentAt: stampSentAt(data.inviteSent, existing.inviteSentAt) },
+        data: { ...data, inviteSentAt: stampSentAt(data.inviteSent, existing!.inviteSentAt) },
       });
     } else {
-      const existing = await prisma.guest.findUnique({ where: { guestCode } });
-      created = !existing;
-      previous = existing;
       guest = await prisma.guest.upsert({
         where: { guestCode },
         update: data,
         create: { ...data, inviteSentAt: data.inviteSent ? new Date() : null },
       });
     }
-
     await syncAttendees(guest, previous);
 
     await audit({

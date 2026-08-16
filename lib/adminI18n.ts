@@ -72,6 +72,8 @@ export type AdminDict = {
   // guest form
   editGuest: string;
   addGuest: string;
+  /** Why the admin form asks for seats and not for head counts. */
+  guestAnswersHint: string;
   namePlaceholder: string;
   adults: string;
   kids: string;
@@ -405,6 +407,8 @@ const da: AdminDict = {
 
   editGuest: "Rediger gæst",
   addGuest: "Tilføj gæst",
+  guestAnswersHint:
+    "Gæsterne svarer selv, hvor mange der kommer i kirken og til festen.",
   namePlaceholder: "Navn",
   adults: "Voksne (bekræftet)",
   kids: "Børn (bekræftet)",
@@ -632,6 +636,8 @@ const en: AdminDict = {
 
   editGuest: "Edit guest",
   addGuest: "Add guest",
+  guestAnswersHint:
+    "Guests answer for themselves how many come to the church and to the party.",
   namePlaceholder: "Name",
   adults: "Adults (confirmed)",
   kids: "Kids (confirmed)",

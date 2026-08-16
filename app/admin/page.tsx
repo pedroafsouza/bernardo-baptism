@@ -31,7 +31,10 @@ import {
   type AdminLang,
 } from "@/lib/adminI18n";
 import { MESSAGE_LANGS, type MessageLang } from "@/lib/invite";
-import { inviteCodeFromName } from "@/lib/inviteCode";
+import GuestFormModal, {
+  emptyGuestForm,
+  type GuestFormValues,
+} from "@/components/admin/GuestFormModal";
 
 type Guest = {
   id: string;
@@ -59,30 +62,11 @@ type Guest = {
   updatedAt: string;
 };
 
-const emptyForm = {
-  id: "",
-  guestCode: "",
-  name: "",
-  group: "Family",
-  status: "PENDING",
-  maxGuests: 1,
-  maxKids: 0,
-  churchCount: 1,
-  churchKids: 0,
-  guestCount: 1,
-  kids: 0,
-  likely: true,
-  inviteSent: false,
-};
-
 type AdminIdentity = {
   id: string;
   username: string;
   mustChangePassword: boolean;
 };
-
-/** Small caption above a form field, so a bare number always says what it is. */
-const fieldLabel = "text-[11px] uppercase tracking-wide opacity-70";
 
 type Tab = "guests" | "visits" | "audit" | "admins" | "account";
 
@@ -141,7 +125,8 @@ function AdminPageInner() {
   const [filterGroup, setFilterGroup] = useState("ALL");
   const [filterStatus, setFilterStatus] = useState("ALL");
   const [filterSent, setFilterSent] = useState("ALL");
-  const [form, setForm] = useState({ ...emptyForm });
+  // The add/edit form lives in a modal: null while it is closed.
+  const [guestForm, setGuestForm] = useState<GuestFormValues | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   // Households whose individual answers are unfolded in the table.
   const [openPeople, setOpenPeople] = useState<Record<string, boolean>>({});
@@ -262,25 +247,22 @@ function AdminPageInner() {
     await load();
   }
 
-  async function saveGuest(e: React.FormEvent) {
-    e.preventDefault();
+  /** Returns true when the household was stored, so the modal can close. */
+  async function saveGuest(values: GuestFormValues): Promise<boolean> {
     setError(null);
-    try {
-      const res = await fetch("/api/admin/guests", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "same-origin",
-        body: JSON.stringify(form),
-      });
-      if (!res.ok) {
-        const d = await res.json().catch(() => ({}));
-        throw new Error(d.error || t.couldNotSave);
-      }
-      setForm({ ...emptyForm });
-      await load();
-    } catch (e: any) {
-      setError(e.message);
+    const res = await fetch("/api/admin/guests", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify(values),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      throw new Error(d.error || t.couldNotSave);
     }
+    setGuestForm(null);
+    await load();
+    return true;
   }
 
   async function deleteGuest(id: string) {
@@ -293,7 +275,7 @@ function AdminPageInner() {
   }
 
   function editGuest(g: Guest) {
-    setForm({
+    setGuestForm({
       id: g.id,
       guestCode: g.guestCode,
       name: g.name,
@@ -301,14 +283,9 @@ function AdminPageInner() {
       status: g.status,
       maxGuests: g.maxGuests,
       maxKids: g.maxKids,
-      churchCount: g.churchCount,
-      churchKids: g.churchKids,
-      guestCount: g.guestCount,
-      kids: g.kids,
       likely: g.likely,
       inviteSent: g.inviteSent,
     });
-    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   /**
@@ -860,213 +837,15 @@ function AdminPageInner() {
           </div>
         </div>
 
-        {/* Add / Edit form */}
-        <form
-          onSubmit={saveGuest}
-          className="bg-white border-4 border-black p-4 mb-6 grid grid-cols-1 sm:grid-cols-6 gap-3 items-end"
-        >
-          <div className="sm:col-span-6 text-[16px] flex items-center gap-2">
-            <Icon name={form.id ? "edit" : "addGuest"} />
-            {form.id ? t.editGuest : t.addGuest}
-          </div>
-          <div className="flex flex-col gap-1 sm:col-span-1">
-            <label className={fieldLabel} htmlFor="guest-code">
-              {t.colCode}
-            </label>
-            <div className="flex items-stretch gap-1">
-              <input
-                required
-                id="guest-code"
-                value={form.guestCode}
-                onChange={(e) => setForm({ ...form, guestCode: e.target.value })}
-                placeholder="GUEST_XYZ"
-                className="border-4 border-black p-2 text-[14px] w-full min-w-0"
-              />
-              <button
-                type="button"
-                title={t.generateCode}
-                aria-label={t.generateCode}
-                onClick={() =>
-                  setForm((f) => ({
-                    ...f,
-                    guestCode: inviteCodeFromName(
-                      f.name,
-                      guests.filter((x) => x.id !== f.id).map((x) => x.guestCode)
-                    ),
-                  }))
-                }
-                className="pixel-btn border-4 border-black bg-pastel-yellow px-2 shrink-0"
-              >
-                <Icon name="magic" className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-          <label className="flex flex-col gap-1 sm:col-span-2">
-            <span className={fieldLabel}>{t.colName}</span>
-            <input
-              required
-              value={form.name}
-              onChange={(e) => {
-                const name = e.target.value;
-                setForm((f) => {
-                  const others = guests.map((x) => x.guestCode);
-                  // A new household gets a code proposed as you type, until
-                  // somebody types their own; an existing one keeps the code its
-                  // guests already have in their pocket.
-                  const proposed = !f.guestCode || f.guestCode === inviteCodeFromName(f.name, others);
-                  return {
-                    ...f,
-                    name,
-                    guestCode:
-                      f.id || !proposed ? f.guestCode : inviteCodeFromName(name, others),
-                  };
-                });
-              }}
-              placeholder={t.namePlaceholder}
-              className="border-4 border-black p-2 text-[14px] w-full"
-            />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className={fieldLabel}>{t.colGroup}</span>
-            <select
-              value={form.group}
-              onChange={(e) => setForm({ ...form, group: e.target.value })}
-              className="border-4 border-black p-2 text-[14px] w-full"
-            >
-              {GROUPS.map((g) => (
-                <option key={g}>{g}</option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className={fieldLabel}>{t.colStatus}</span>
-            <select
-              value={form.status}
-              onChange={(e) => setForm({ ...form, status: e.target.value })}
-              className="border-4 border-black p-2 text-[14px] w-full"
-            >
-              {STATUSES.map((s) => (
-                <option key={s}>{s}</option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className={fieldLabel}>{t.maxAdults}</span>
-            <input
-              type="number"
-              min={1}
-              max={10}
-              value={form.maxGuests}
-              onChange={(e) => {
-                const maxGuests = Number(e.target.value);
-                setForm({
-                  ...form,
-                  maxGuests,
-                  guestCount: Math.min(form.guestCount, Math.max(maxGuests, 0)),
-                  churchCount: Math.min(form.churchCount, Math.max(maxGuests, 0)),
-                });
-              }}
-              className="border-4 border-black p-2 text-[14px] w-full"
-            />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className={fieldLabel}>{t.maxKids}</span>
-            <input
-              type="number"
-              min={0}
-              max={10}
-              value={form.maxKids}
-              onChange={(e) => {
-                const maxKids = Number(e.target.value);
-                setForm({
-                  ...form,
-                  maxKids,
-                  kids: Math.min(form.kids, Math.max(maxKids, 0)),
-                  churchKids: Math.min(form.churchKids, Math.max(maxKids, 0)),
-                });
-              }}
-              className="border-4 border-black p-2 text-[14px] w-full"
-            />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className={fieldLabel}>{t.churchAdults}</span>
-            <input
-              type="number"
-              min={0}
-              max={form.maxGuests}
-              value={form.churchCount}
-              onChange={(e) => setForm({ ...form, churchCount: Number(e.target.value) })}
-              className="border-4 border-black p-2 text-[14px] w-full"
-            />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className={fieldLabel}>{t.churchKids}</span>
-            <input
-              type="number"
-              min={0}
-              max={form.maxKids}
-              value={form.churchKids}
-              onChange={(e) => setForm({ ...form, churchKids: Number(e.target.value) })}
-              disabled={form.maxKids === 0}
-              className="border-4 border-black p-2 text-[14px] w-full disabled:opacity-50"
-            />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className={fieldLabel}>{t.adults}</span>
-            <input
-              type="number"
-              min={0}
-              max={form.maxGuests}
-              value={form.guestCount}
-              onChange={(e) => setForm({ ...form, guestCount: Number(e.target.value) })}
-              className="border-4 border-black p-2 text-[14px] w-full"
-            />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className={fieldLabel}>{t.kids}</span>
-            <input
-              type="number"
-              min={0}
-              max={form.maxKids}
-              value={form.kids}
-              onChange={(e) => setForm({ ...form, kids: Number(e.target.value) })}
-              disabled={form.maxKids === 0}
-              className="border-4 border-black p-2 text-[14px] w-full disabled:opacity-50"
-            />
-          </label>
-          <label className="sm:col-span-3 flex items-center gap-2 text-[14px]">
-            <input
-              type="checkbox"
-              checked={form.likely}
-              onChange={(e) => setForm({ ...form, likely: e.target.checked })}
-              className="w-4 h-4"
-            />
-            {t.expectedToCome}
-          </label>
-          <label className="sm:col-span-3 flex items-center gap-2 text-[14px]">
-            <input
-              type="checkbox"
-              checked={form.inviteSent}
-              onChange={(e) => setForm({ ...form, inviteSent: e.target.checked })}
-              className="w-4 h-4"
-            />
-            {t.inviteSent}
-          </label>
-          <div className="sm:col-span-6 flex gap-2">
-            <button className="pixel-btn bg-pastel-green border-4 border-black py-2 px-4 text-[14px] flex items-center gap-2">
-              <Icon name="check" /> {form.id ? t.update : t.add}
-            </button>
-            {form.id && (
-              <button
-                type="button"
-                onClick={() => setForm({ ...emptyForm })}
-                className="pixel-btn bg-pastel-yellow border-4 border-black py-2 px-4 text-[14px] flex items-center gap-2"
-              >
-                <Icon name="close" /> {t.cancel}
-              </button>
-            )}
-          </div>
-        </form>
+        <div className="mb-6">
+          <button
+            type="button"
+            onClick={() => setGuestForm({ ...emptyGuestForm })}
+            className="pixel-btn bg-pastel-green border-4 border-black py-2 px-4 text-[14px] flex items-center gap-2"
+          >
+            <Icon name="addGuest" /> {t.addGuest}
+          </button>
+        </div>
 
         {/* Filters */}
         <div className="flex gap-3 mb-3 flex-wrap text-[14px]">
@@ -1454,6 +1233,20 @@ function AdminPageInner() {
           </>
         )}
       </div>
+
+      {guestForm && (
+        <GuestFormModal
+          t={t}
+          initial={guestForm}
+          groups={GROUPS}
+          statuses={STATUSES}
+          takenCodes={guests
+            .filter((x) => x.id !== guestForm.id)
+            .map((x) => x.guestCode)}
+          onSave={saveGuest}
+          onClose={() => setGuestForm(null)}
+        />
+      )}
 
       {messageGuest && (
         <InviteMessageModal
