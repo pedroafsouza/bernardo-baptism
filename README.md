@@ -47,8 +47,9 @@ Built with Next.js 15 · React 19 · Phaser 3 · Prisma + SQLite · Tailwind
   church. Best run per guest wins.
 - **A new set of bones every day.** See [Daily bones](#daily-bones) below.
 - **Oscar grows.** The more bones you collect, the bigger Oscar gets — from
-  scale 1.2 up to 2.1 at 40 bones.
-- **Two languages.** Danish by default, English opt-in, stored in localStorage.
+  scale 0.8 up to 1.5 at 40 bones.
+- **Three languages.** Dansk, English and Português. The `?lang=` parameter is
+  the single source of truth, so a link always opens in the language it carries.
 - **Original chiptune soundtrack**, synthesised in the browser with Web Audio.
 
 <img src="public/assets/game/hospital.png" width="160" alt="Level scenery" />
