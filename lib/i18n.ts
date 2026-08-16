@@ -2,10 +2,10 @@
 
 import { useCallback } from "react";
 import { useLangParam } from "@/lib/langParam";
+import { DEFAULT_LANG, isLang, LANGS, type Lang } from "@/lib/lang";
 
-export type Lang = "da" | "en" | "pt";
-export const LANGS: Lang[] = ["da", "en", "pt"];
-export const DEFAULT_LANG: Lang = "da";
+export { DEFAULT_LANG, isLang, LANGS };
+export type { Lang };
 
 export const LANG_LABEL: Record<Lang, string> = {
   da: "Dansk",
@@ -575,10 +575,6 @@ const pt: Dict = {
 };
 
 export const DICTS: Record<Lang, Dict> = { da, en, pt };
-
-export function isLang(value: unknown): value is Lang {
-  return typeof value === "string" && (LANGS as string[]).includes(value);
-}
 
 /**
  * Language lives only in the `?lang=` query parameter — there is no stored
