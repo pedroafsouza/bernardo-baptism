@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { SEED_GUESTS } from "./guests";
+import { countGuestNames, splitGuestNames } from "../lib/names";
 
 /**
  * Proves a database is fit to be production.
@@ -31,10 +32,13 @@ async function main() {
     if (stored.name !== seed.name) {
       problems.push(`${seed.guestCode}: name is "${stored.name}", expected "${seed.name}"`);
     }
-    if (stored.maxGuests !== seed.guestCount || stored.maxKids !== seed.kids) {
+    // "and", "og", "e" and a comma each name another person, and each of them
+    // answers for themselves — so the line is the floor for the seat count.
+    const seats = Math.max(seed.guestCount, countGuestNames(seed.name));
+    if (stored.maxGuests !== seats || stored.maxKids !== seed.kids) {
       problems.push(
         `${seed.guestCode}: invited for ${stored.maxGuests}+${stored.maxKids}, ` +
-          `expected ${seed.guestCount}+${seed.kids}`
+          `expected ${seats}+${seed.kids}`
       );
     }
   }
@@ -49,6 +53,24 @@ async function main() {
   const admins = await prisma.adminUser.count();
   if (admins === 0) {
     problems.push("no administrator — the panel would be unreachable");
+  }
+
+  // Answers are stored per person, keyed by their place on the household line,
+  // so a row past the last name belongs to nobody and its answer is lost.
+  const attendees = await prisma.attendee.findMany();
+  for (const a of attendees) {
+    const guest = byCode.get(a.guestCode);
+    if (!guest) {
+      problems.push(`orphan answer: ${a.guestCode} position ${a.position} (${a.name})`);
+      continue;
+    }
+    const names = splitGuestNames(guest.name);
+    if (a.position >= Math.max(names.length, 1)) {
+      problems.push(
+        `${a.guestCode}: an answer for "${a.name}" sits at position ${a.position}, ` +
+          `but "${guest.name}" only names ${names.length} person(s)`
+      );
+    }
   }
 
   if (problems.length > 0) {

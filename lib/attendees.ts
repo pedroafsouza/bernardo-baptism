@@ -15,7 +15,7 @@
  * Everything here is pure so the RSVP form, both APIs and the admin panel agree
  * on exactly who is on an invitation and what the household therefore answered.
  */
-import { splitGuestNames } from "@/lib/names";
+import { splitGuestNames, countGuestNames } from "@/lib/names";
 import { normalizeCapacity } from "@/lib/capacity";
 
 export type AttendeeStatus = "PENDING" | "ATTENDING" | "DECLINED";
@@ -63,15 +63,31 @@ function isStatus(value: unknown): value is AttendeeStatus {
 }
 
 /**
- * The adults on an invitation: the names on the household line, never more than
- * the invitation seats. A line we cannot take apart still yields one person, so
- * every invitation has somebody to answer for.
+ * The adults on an invitation: every name on the household line. "and", "og",
+ * "e" and a comma each mean another person, and each of them answers for
+ * themselves — so the line decides how many adults there are, and a capacity
+ * that was set lower can never quietly drop somebody who was named. A line we
+ * cannot take apart still yields one person, so every invitation has somebody
+ * to answer for.
  */
 export function adultNames(household: Household): string[] {
-  const { maxGuests } = normalizeCapacity({ maxGuests: household.maxGuests ?? 1 });
   const names = splitGuestNames(household.name);
   const people = names.length > 0 ? names : [(household.name ?? "").trim() || "Guest"];
+  const { maxGuests } = normalizeCapacity({
+    maxGuests: Math.max(household.maxGuests ?? 1, people.length),
+  });
   return people.slice(0, maxGuests);
+}
+
+/**
+ * How many adults an invitation actually seats: what it was given, or the
+ * number of people it names if that is more. This is the one rule that keeps a
+ * head count from disagreeing with the individual answers underneath it.
+ */
+export function adultSeats(household: Household): number {
+  return normalizeCapacity({
+    maxGuests: Math.max(household.maxGuests ?? 1, countGuestNames(household.name)),
+  }).maxGuests;
 }
 
 /**

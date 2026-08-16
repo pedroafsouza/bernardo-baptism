@@ -18,6 +18,7 @@ import {
   safeAllergies,
   type PostedAttendee,
 } from "@/lib/rsvpAnswers";
+import { countGuestNames } from "@/lib/names";
 
 export const dynamic = "force-dynamic";
 
@@ -244,7 +245,13 @@ export async function POST(req: NextRequest) {
     // Capacity first, then the confirmed numbers clamped to it: the admin form
     // and the RSVP form both work this way, and the API is the last place that
     // could let a child into a household invited without any.
-    const maxGuests = safeInt(raw.maxGuests, 1, 10, 1);
+    //
+    // The household line has the final say on how many adults there are: "and",
+    // "og", "e" and a comma each name another person, and each of them answers
+    // for themselves. An invitation for "Esdras, Vladia e Cecilia" therefore
+    // seats three however few the form was given, so nobody named on it is left
+    // without a seat to answer from.
+    const maxGuests = Math.max(safeInt(raw.maxGuests, 1, 10, 1), Math.min(countGuestNames(name), 10));
     const maxKids = safeInt(raw.maxKids, 0, 10, 0);
 
     // The household has to be read before it is written: the head counts are

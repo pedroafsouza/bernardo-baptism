@@ -2,6 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import { SEED_GUESTS } from "./guests";
 import { hashPassword } from "../lib/password";
 import { clampParty } from "../lib/capacity";
+import { countGuestNames } from "../lib/names";
 
 const prisma = new PrismaClient();
 
@@ -115,6 +116,10 @@ async function main() {
   }
 
   for (const g of SEED_GUESTS) {
+    // The household line has the last word on how many adults are invited:
+    // "and", "og", "e" and a comma each name another person who answers for
+    // themselves, so a line naming three can never be seeded with two seats.
+    const maxGuests = Math.max(g.guestCount, countGuestNames(g.name));
     await prisma.guest.upsert({
       where: { guestCode: g.guestCode },
       // Re-seeding must never clobber an answer, a score or a sent invitation —
@@ -122,7 +127,7 @@ async function main() {
       update: {
         name: g.name,
         group: g.group,
-        maxGuests: g.guestCount,
+        maxGuests,
         maxKids: g.kids,
         likely: g.likely,
       },
@@ -131,7 +136,7 @@ async function main() {
         name: g.name,
         group: g.group,
         likely: g.likely,
-        maxGuests: g.guestCount,
+        maxGuests,
         maxKids: g.kids,
         churchCount: g.guestCount,
         churchKids: g.kids,

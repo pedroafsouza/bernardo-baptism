@@ -1,4 +1,5 @@
 import { EVENT } from "@/lib/config";
+import { formatNameList } from "@/lib/names";
 
 export type MessageLang = "da" | "en" | "pt";
 export type MessageChannel = "whatsapp" | "email";
@@ -37,6 +38,18 @@ const RECEPTION: Record<MessageLang, string> = {
 };
 
 /**
+ * How the parents sign the invitation: the way they would say it out loud, with
+ * the family name once at the end and the joining word of the language the
+ * guest is reading — "Birgitte og Pedro Augusto Freitas de Souza", "Birgitte
+ * and Pedro Augusto Freitas de Souza", "Birgitte e Pedro Augusto Freitas de
+ * Souza". A parent who does not carry the family name keeps their own in full.
+ */
+export function inviteSignature(lang: MessageLang): string {
+  const shorten = (full: string) => full.replace(` ${EVENT.familyName}`, "").trim() || full;
+  return formatNameList([shorten(EVENT.mother), EVENT.father], lang);
+}
+
+/**
  * Builds the invitation text for one guest.
  *
  * The personal link is the whole point of the invitation, so it always appears
@@ -52,6 +65,7 @@ export function buildInviteMessage(opts: {
   const ceremony = CEREMONY[lang];
   const reception = RECEPTION[lang];
   const deadline = DEADLINE[lang];
+  const signature = inviteSignature(lang);
 
   if (lang === "da") {
     const subject = `Invitation til Bernardos barnedåb — ${EVENT.ceremonyTime}`;
@@ -71,7 +85,7 @@ ${link}
 Svar venligst senest den ${deadline}.
 
 Kærlig hilsen
-${EVENT.mother} & ${EVENT.father}`
+${signature}`
         : `Kære ${name}
 
 Den 16. juni 2026 kom Bernardo til verden, og nu skal han døbes. Det vil glæde os meget, hvis I vil fejre dagen sammen med os.
@@ -91,7 +105,7 @@ Svar venligst senest den ${deadline}.
 Vi glæder os til at se jer.
 
 Kærlig hilsen
-${EVENT.mother} & ${EVENT.father}`;
+${signature}`;
     return { subject, body };
   }
 
@@ -113,7 +127,7 @@ ${link}
 Confirme até ${deadline}, por favor.
 
 Com carinho,
-${EVENT.mother} & ${EVENT.father}`
+${signature}`
         : `Querido(a) ${name},
 
 No dia 16 de junho de 2026 o Bernardo chegou ao mundo, e agora vamos batizá-lo. Ficaríamos muito felizes em celebrar esse dia com você.
@@ -133,7 +147,7 @@ Confirme até ${deadline}, por favor.
 Esperamos você!
 
 Com carinho,
-${EVENT.mother} & ${EVENT.father}`;
+${signature}`;
     return { subject, body };
   }
 
@@ -154,7 +168,7 @@ ${link}
 Please reply by ${deadline}.
 
 Love,
-${EVENT.mother} & ${EVENT.father}`
+${signature}`
       : `Dear ${name},
 
 On 16 June 2026 Bernardo came into the world, and now he is going to be christened. It would mean a lot to us if you could celebrate the day with us.
@@ -174,7 +188,7 @@ Please reply by ${deadline}.
 We hope to see you there.
 
 Love,
-${EVENT.mother} & ${EVENT.father}`;
+${signature}`;
 
   return { subject, body };
 }

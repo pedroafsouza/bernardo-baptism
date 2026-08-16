@@ -361,6 +361,7 @@ group, so a reset can never race a deploy.
 | `npm run db:push`| Sync the Prisma schema to SQLite          |
 | `npm run seed`   | Upsert the guest list (never overwrites answers) and create the first admin |
 | `npm run db:backfill` | Fill in invitation capacity for rows that predate it (idempotent) |
+| `npm run db:split` | Give everybody named on an invitation their own seat to answer from — "and", "og", "e" and a comma each mean another person (idempotent; `--dry-run` to preview) |
 | `npm run db:verify` | Check a database is fit to be production: every guest registered with the right capacity, and an administrator present |
 | `npm test`       | Unit tests for the password policy, the invitation capacity rules, the daily bone layout, the throttled hand-in and the name splitting |
 
@@ -376,6 +377,13 @@ and the RSVP form does not even offer the choice.
 the capacity in the RSVP API, in the admin API and again when the head count is
 totalled (`lib/capacity.ts`), so an answer given before a capacity was tightened
 can never inflate the final numbers.
+
+The household line has the last word on how many adults an invitation seats.
+"and", "og", "e", "&" and a comma each name another person — "Bibi and Pedro" is
+two people, "Esdras, Vladia e Cecilia" is three — and each of them answers for
+themselves, so `maxGuests` is raised to fit everybody named (never lowered, so an
+invitation with an unnamed plus-one keeps its spare seat). `npm run db:split`
+applies that to a database written before the rule existed.
 
 ---
 

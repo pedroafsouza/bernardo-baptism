@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   adultNames,
+  adultSeats,
   attendeeSlots,
   attending,
   partyFromAttendees,
@@ -18,8 +19,13 @@ test("adultNames splits the household line", () => {
   ]);
 });
 
-test("adultNames never invents a seat beyond the invitation", () => {
-  assert.deepEqual(adultNames({ name: "Marie og Kevin", maxGuests: 1 }), ["Marie"]);
+test("adultNames seats everybody the line names, whatever the capacity said", () => {
+  // "and", "og", "e" and a comma each mean another person, and each of them
+  // answers for themselves — so a capacity set too low cannot drop anybody.
+  assert.deepEqual(adultNames({ name: "Marie og Kevin", maxGuests: 1 }), [
+    "Marie",
+    "Kevin",
+  ]);
 });
 
 test("adultNames keeps a line it cannot split as one person", () => {
@@ -167,4 +173,34 @@ test("summarizeAllergies lists only the people eating with us", () => {
 
 test("summarizeAllergies is empty when nobody declared anything", () => {
   assert.equal(summarizeAllergies([slot("ATTENDING", "ATTENDING")], "   "), "");
+});
+
+test("everybody named on the line gets a seat of their own to answer from", () => {
+  // An invitation stored with too few seats used to drop the people after the
+  // last one, so they could never reply at all.
+  const household = { name: "Esdras, Vladia e Cecilia", maxGuests: 2 };
+  const slots = attendeeSlots(household);
+  assert.deepEqual(
+    slots.map((s) => s.name),
+    ["Esdras", "Vladia", "Cecilia"]
+  );
+  assert.equal(adultSeats(household), 3);
+});
+
+test("a spare seat for somebody unnamed is kept", () => {
+  assert.equal(adultSeats({ name: "Ricardo and Karen", maxGuests: 3 }), 3);
+  assert.equal(adultSeats({ name: "Ana Luisa", maxGuests: 2 }), 2);
+  assert.equal(adultSeats({ name: "Helene", maxGuests: 1 }), 1);
+});
+
+test("each of them answers for themselves", () => {
+  const household = { name: "Kitt og Jan", maxGuests: 2 };
+  const slots = attendeeSlots(household, [
+    { position: 0, church: "ATTENDING", reception: "ATTENDING" },
+    { position: 1, church: "DECLINED", reception: "ATTENDING" },
+  ]);
+  const party = partyFromAttendees(slots, { church: 0, reception: 0 });
+  assert.equal(party.churchCount, 1);
+  assert.equal(party.guestCount, 2);
+  assert.equal(party.status, "ATTENDING");
 });

@@ -50,4 +50,5 @@ jobs:
           pnpm exec prisma db push --skip-generate
           pnpm run seed
           pnpm run db:backfill
+          pnpm run db:split
           pnpm run db:verify

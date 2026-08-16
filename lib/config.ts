@@ -7,9 +7,12 @@
  */
 
 export const EVENT = {
+  /// The name the family shares, so the parents can sign an invitation with
+  /// it once — "Birgitte og Pedro Augusto Freitas de Souza" — instead of twice.
+  familyName: "Freitas de Souza",
   child: "Bernardo Freitas de Souza",
   birthday: "16.06.2026",
-  mother: "Birgite Freitas de Souza",
+  mother: "Birgitte Freitas de Souza",
   father: "Pedro Augusto Freitas de Souza",
   ceremonyTime: "Lørdag den 3. oktober 2026 kl. 11:00",
   ceremonyTimeEn: "Saturday 3 October 2026 at 11:00",

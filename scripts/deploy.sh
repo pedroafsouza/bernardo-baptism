@@ -110,6 +110,12 @@ case "$SEED_MODE" in
     ;;
 esac
 
+# Every person named on an invitation needs a seat of their own to answer from:
+# "and", "og", "e" and a comma each mean another person. Runs after the seed, so
+# a household line changed by it is taken apart too. Idempotent.
+log "Seating everybody named on an invitation"
+"$RUN" run db:split
+
 # ------------------------------------------------------------------- build
 log "Building"
 "$RUN" run build

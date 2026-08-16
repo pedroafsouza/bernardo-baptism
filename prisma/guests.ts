@@ -79,7 +79,7 @@ export const SEED_GUESTS: SeedGuest[] = [
   { guestCode: "SUELIARDO", name: "Sueli", group: "Family", guestCount: 1, kids: 0, likely: true },
   { guestCode: "NATAVO", name: "Natalia and Gustavo", group: "Friends", guestCount: 2, kids: 1, likely: true },
   { guestCode: "CARLOSCREW", name: "Carlos, Dinha, Sonia, Morges", group: "Family", guestCount: 4, kids: 0, likely: true },
-  { guestCode: "ESDVLADIA", name: "Esdras, Vladia e Cecilia", group: "Family", guestCount: 2, kids: 1, likely: true },
+  { guestCode: "ESDVLADIA", name: "Esdras, Vladia e Cecilia", group: "Family", guestCount: 3, kids: 1, likely: true },
   { guestCode: "CLAUDMOR", name: "Claude and Mor", group: "Family", guestCount: 2, kids: 0, likely: true },
   { guestCode: "ANAJUNIOR", name: "Ana and Junior", group: "Family", guestCount: 2, kids: 0, likely: true },
   { guestCode: "PEDROTATY", name: "Pedro and Taty", group: "Family", guestCount: 2, kids: 0, likely: true },
