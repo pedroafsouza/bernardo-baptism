@@ -77,9 +77,14 @@ model Guest {
   maxKids    Int      @default(0)
   /// What the household actually confirmed. Always within the maximums above,
   /// so the final head count can never include a child nobody was invited to
-  /// bring.
+  /// bring. `guestCount` is derived from the individual answers in `attendees`
+  /// — it stays here because the head count, the admin table and the CSV all
+  /// read it, and it must agree with who actually said yes.
   guestCount Int      @default(1)
   kids       Int      @default(0)
+  /// Allergies and dietary needs for the children in the party. Children are
+  /// counted, not named, so one shared note covers them all.
+  kidsAllergies String @default("")
   likely     Boolean  @default(true)
   inviteSent Boolean  @default(false)
   inviteSentAt DateTime?
@@ -93,6 +98,34 @@ model Guest {
   playedAt   DateTime?
   updatedAt  DateTime @updatedAt
   createdAt  DateTime @default(now())
+
+  attendees  Attendee[]
+}
+
+/// One named adult on an invitation.
+///
+/// A `Guest` row is a household as it is addressed — "Marie and Kevin" on one
+/// line — but the reply is given person by person: Marie can come while Kevin
+/// cannot, and each of them has their own allergies. The people are derived
+/// from the household line itself (see `lib/attendees.ts`), so an invitation
+/// never grows extra seats; this table only records what each of them answered.
+model Attendee {
+  id        String   @id @default(uuid())
+  guestCode String
+  guest     Guest    @relation(fields: [guestCode], references: [guestCode], onDelete: Cascade)
+  /// Position in the household line — the stable identity of a person, so an
+  /// answer survives a re-render and follows the name it was given for.
+  position  Int
+  name      String
+  /// `PENDING` until this person is answered for, then `ATTENDING`/`DECLINED`.
+  status    String   @default("PENDING")
+  /// Free text, empty when there is nothing to declare.
+  allergies String   @default("")
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@unique([guestCode, position])
+  @@index([guestCode])
 }
 
 /// One bone, on one day, picked up by one household.

@@ -5,6 +5,8 @@ import { audit } from "@/lib/audit";
 import { RATE_RULES, rateLimit } from "@/lib/rateLimit";
 import { clientIp, readJson, safeId, safeInt, safeString } from "@/lib/security";
 import { clampParty } from "@/lib/capacity";
+import { attendeeSlots, type AttendeeSlot } from "@/lib/attendees";
+import { loadAttendeeSlots, saveAttendeeSlots } from "@/lib/attendeeStore";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +31,42 @@ function throttle(req: NextRequest) {
   );
 }
 
+/**
+ * Keeps the individual answers in step with an edited invitation.
+ *
+ * Renaming a household or trimming its seats reshapes who is on it, so the rows
+ * follow the names. The individual answers are only overwritten when the admin
+ * actually moved the household answer itself — otherwise editing an unrelated
+ * field would quietly decide for people who had already replied.
+ */
+async function syncAttendees(
+  guest: { guestCode: string; name: string; maxGuests: number; status: string; guestCount: number },
+  previous: { status: string; guestCount: number } | null
+): Promise<void> {
+  const slots = await loadAttendeeSlots(guest);
+  const moved =
+    !previous || previous.status !== guest.status || previous.guestCount !== guest.guestCount;
+
+  const next: AttendeeSlot[] = !moved
+    ? slots
+    : slots.map((slot, i) => {
+        if (guest.status === "ATTENDING") {
+          const coming = i < guest.guestCount;
+          return {
+            ...slot,
+            status: coming ? ("ATTENDING" as const) : ("DECLINED" as const),
+            allergies: coming ? slot.allergies : "",
+          };
+        }
+        if (guest.status === "DECLINED") {
+          return { ...slot, status: "DECLINED" as const, allergies: "" };
+        }
+        return { ...slot, status: "PENDING" as const };
+      });
+
+  await saveAttendeeSlots(guest.guestCode, next);
+}
+
 export async function GET(req: NextRequest) {
   const throttled = throttle(req);
   if (throttled) return throttled;
@@ -36,8 +74,20 @@ export async function GET(req: NextRequest) {
   const session = await requireAdmin(req);
   if (isAuthFailure(session)) return session.response;
 
-  const guests = await prisma.guest.findMany({ orderBy: { createdAt: "asc" } });
-  return NextResponse.json({ guests });
+  const guests = await prisma.guest.findMany({
+    orderBy: { createdAt: "asc" },
+    include: { attendees: { orderBy: { position: "asc" } } },
+  });
+
+  // The panel is about who is coming, so every household arrives with its
+  // people already resolved — names from the invitation line, answers from the
+  // rows they have given.
+  return NextResponse.json({
+    guests: guests.map(({ attendees, ...guest }) => ({
+      ...guest,
+      attendees: attendeeSlots(guest, attendees),
+    })),
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -110,11 +160,13 @@ export async function POST(req: NextRequest) {
 
     let guest;
     let created = false;
+    let previous: { status: string; guestCount: number } | null = null;
     if (id) {
       const existing = await prisma.guest.findUnique({ where: { id } });
       if (!existing) {
         return NextResponse.json({ error: "Gæst ikke fundet" }, { status: 404 });
       }
+      previous = existing;
       guest = await prisma.guest.update({
         where: { id },
         data: { ...data, inviteSentAt: stampSentAt(data.inviteSent, existing.inviteSentAt) },
@@ -122,12 +174,15 @@ export async function POST(req: NextRequest) {
     } else {
       const existing = await prisma.guest.findUnique({ where: { guestCode } });
       created = !existing;
+      previous = existing;
       guest = await prisma.guest.upsert({
         where: { guestCode },
         update: data,
         create: { ...data, inviteSentAt: data.inviteSent ? new Date() : null },
       });
     }
+
+    await syncAttendees(guest, previous);
 
     await audit({
       action: created ? "GUEST_CREATED" : "GUEST_UPDATED",

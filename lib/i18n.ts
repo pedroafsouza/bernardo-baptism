@@ -90,6 +90,26 @@ type Dict = {
   yes: string;
   no: string;
   sending: string;
+
+  /** The RSVP wizard: congratulations, the invitation, then who is coming. */
+  congratsTitle: string;
+  congratsBody: string;
+  congratsPartial: string;
+  stepInvitation: string;
+  whoIsComing: string;
+  whoIsComingHint: string;
+  comingYes: string;
+  comingNo: string;
+  allergiesTitle: string;
+  allergiesAdd: string;
+  allergiesPlaceholder: string;
+  allergiesNone: string;
+  kidsAllergiesTitle: string;
+  kidsUnderOne: string;
+  answerEveryone: string;
+  sendReply: string;
+  attendingNames: (names: string) => string;
+  decliningNames: (names: string) => string;
   thanks: string;
   willMiss: string;
   thanksBody: (adults: number, kids: number) => string;
@@ -196,6 +216,25 @@ const da: Dict = {
   yes: "Ja tak, med glæde",
   no: "Desværre, nej tak",
   sending: "Sender…",
+
+  congratsTitle: "Tillykke!",
+  congratsBody: "Du samlede alle 3 velsignelser og åbnede kirkedøren. Bernardo og Oscar er stolte af dig!",
+  congratsPartial: "Tak, fordi du spillede med! Kirken venter på dig, når du får lyst til at prøve igen.",
+  stepInvitation: "Invitationen",
+  whoIsComing: "Hvem kommer?",
+  whoIsComingHint: "Svar for hver enkelt — I behøver ikke komme alle sammen.",
+  comingYes: "Kommer",
+  comingNo: "Kan ikke",
+  allergiesTitle: "Allergi & kost",
+  allergiesAdd: "Tilføj allergi eller kosthensyn",
+  allergiesPlaceholder: "F.eks. nødder, laktose, vegetar",
+  allergiesNone: "Ingen angivet",
+  kidsAllergiesTitle: "Allergi & kost for børnene",
+  kidsUnderOne: "Børn tæller kun med, hvis de er fyldt 1 år.",
+  answerEveryone: "Svar venligst for alle på invitationen.",
+  sendReply: "Send svar",
+  attendingNames: (n) => `Kommer: ${n}`,
+  decliningNames: (n) => `Kan ikke: ${n}`,
   thanks: "Tak!",
   willMiss: "Vi vil savne dig",
   thanksBody: (adults, kids) =>
@@ -303,6 +342,25 @@ const en: Dict = {
   yes: "Yes please, with joy",
   no: "Sadly, I can't make it",
   sending: "Sending…",
+
+  congratsTitle: "Congratulations!",
+  congratsBody: "You collected all 3 blessings and opened the church door. Bernardo and Oscar are proud of you!",
+  congratsPartial: "Thank you for playing! The church will be waiting whenever you feel like another go.",
+  stepInvitation: "The invitation",
+  whoIsComing: "Who is coming?",
+  whoIsComingHint: "Answer for each person — you don't all have to come.",
+  comingYes: "Coming",
+  comingNo: "Can't",
+  allergiesTitle: "Allergies & diet",
+  allergiesAdd: "Add allergies or dietary needs",
+  allergiesPlaceholder: "E.g. nuts, lactose, vegetarian",
+  allergiesNone: "None given",
+  kidsAllergiesTitle: "Allergies & diet for the children",
+  kidsUnderOne: "Children only count if they are older than 1 year.",
+  answerEveryone: "Please answer for everyone on the invitation.",
+  sendReply: "Send reply",
+  attendingNames: (n) => `Coming: ${n}`,
+  decliningNames: (n) => `Can't make it: ${n}`,
   thanks: "Thank you!",
   willMiss: "We'll miss you",
   thanksBody: (adults, kids) =>
@@ -410,6 +468,25 @@ const pt: Dict = {
   yes: "Sim, com alegria",
   no: "Infelizmente não posso",
   sending: "Enviando…",
+
+  congratsTitle: "Parabéns!",
+  congratsBody: "Você juntou as 3 bênçãos e abriu a porta da igreja. O Bernardo e o Oscar estão orgulhosos de você!",
+  congratsPartial: "Obrigado por jogar! A igreja fica esperando para quando você quiser tentar de novo.",
+  stepInvitation: "O convite",
+  whoIsComing: "Quem vem?",
+  whoIsComingHint: "Responda por cada pessoa — não precisam vir todos.",
+  comingYes: "Vou",
+  comingNo: "Não posso",
+  allergiesTitle: "Alergias & dieta",
+  allergiesAdd: "Adicionar alergias ou restrições",
+  allergiesPlaceholder: "Ex.: castanhas, lactose, vegetariano",
+  allergiesNone: "Nada informado",
+  kidsAllergiesTitle: "Alergias & dieta das crianças",
+  kidsUnderOne: "As crianças só contam se tiverem mais de 1 ano.",
+  answerEveryone: "Responda por todas as pessoas do convite, por favor.",
+  sendReply: "Enviar resposta",
+  attendingNames: (n) => `Vem: ${n}`,
+  decliningNames: (n) => `Não pode: ${n}`,
   thanks: "Obrigado!",
   willMiss: "Vamos sentir sua falta",
   thanksBody: (adults, kids) =>

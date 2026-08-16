@@ -10,6 +10,7 @@ import { useLang } from "@/lib/i18n";
 import { computeScore } from "@/lib/config";
 import { DEMO_CODE, demoGuest, isDemoCode } from "@/lib/demo";
 import { boneDay } from "@/lib/dailyBones";
+import { attendeeSlots, type AttendeeSlot } from "@/lib/attendees";
 import { createBoneReporter, type BoneReporter } from "@/lib/boneReporter";
 
 const PhaserGame = dynamic(() => import("@/components/PhaserGame"), {
@@ -27,6 +28,7 @@ type Guest = {
   status: string;
   guestCount: number;
   kids: number;
+  kidsAllergies?: string;
   maxGuests: number;
   maxKids: number;
 };
@@ -36,6 +38,8 @@ function InvitationInner() {
   const code = params.get("code");
   const { lang, setLang, t, langFromLink } = useLang();
   const [guest, setGuest] = useState<Guest | null>(null);
+  // Who is on this invitation and what each of them has already answered.
+  const [attendees, setAttendees] = useState<AttendeeSlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
@@ -76,7 +80,9 @@ function InvitationInner() {
       // The demo invitation never touches the database — resolve it locally so
       // it also works when the guest list is empty or unreachable.
       if (isDemoCode(code)) {
-        setGuest(demoGuest());
+        const demo = demoGuest();
+        setGuest(demo);
+        setAttendees(attendeeSlots(demo));
         setCollected([]);
         setLoading(false);
         return;
@@ -89,7 +95,12 @@ function InvitationInner() {
       try {
         if (rsvp.status === "fulfilled" && rsvp.value.ok) {
           const data = await rsvp.value.json();
-          if (active) setGuest(data.guest);
+          if (active) {
+            setGuest(data.guest);
+            setAttendees(
+              Array.isArray(data.attendees) ? (data.attendees as AttendeeSlot[]) : []
+            );
+          }
         }
       } catch {
         /* ignore */
@@ -250,11 +261,15 @@ function InvitationInner() {
       {showModal && (
         <RsvpModal
           guest={guest}
+          attendees={attendees}
           demo={demo}
           lang={lang}
           run={run}
           leaderboardKey={leaderboardKey}
-          onSaved={(g) => setGuest(g)}
+          onSaved={(g, people) => {
+            setGuest(g);
+            setAttendees(people);
+          }}
           onClose={() => setShowModal(false)}
         />
       )}

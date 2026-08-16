@@ -74,6 +74,17 @@ export type AdminDict = {
   maxKids: string;
   ofMax: (n: number) => string;
   noKidsInvited: string;
+  /** The individual answers behind a household's numbers. */
+  whoIsComing: string;
+  showPeople: string;
+  hidePeople: string;
+  personAttending: string;
+  personDeclined: string;
+  personPending: string;
+  allergies: string;
+  kidsAllergies: string;
+  noAllergies: string;
+  allergyCount: (n: number) => string;
   expectedToCome: string;
   inviteSent: string;
   update: string;
@@ -360,6 +371,16 @@ const da: AdminDict = {
   maxKids: "Maks. børn",
   ofMax: (n) => `Invitationen giver plads til ${n}`,
   noKidsInvited: "Invitationen er uden børn",
+  whoIsComing: "Hvem kommer",
+  showPeople: "Vis de enkelte svar",
+  hidePeople: "Skjul de enkelte svar",
+  personAttending: "Kommer",
+  personDeclined: "Kommer ikke",
+  personPending: "Har ikke svaret",
+  allergies: "Allergi & kost",
+  kidsAllergies: "Børn",
+  noAllergies: "Ingen angivet",
+  allergyCount: (n) => `${n} med allergi eller kosthensyn`,
   expectedToCome: "Forventes at komme",
   inviteSent: "Invitation sendt",
   update: "Opdater",
@@ -545,6 +566,16 @@ const en: AdminDict = {
   maxKids: "Max kids",
   ofMax: (n) => `The invitation has room for ${n}`,
   noKidsInvited: "This invitation does not include children",
+  whoIsComing: "Who is coming",
+  showPeople: "Show the individual answers",
+  hidePeople: "Hide the individual answers",
+  personAttending: "Coming",
+  personDeclined: "Not coming",
+  personPending: "No answer yet",
+  allergies: "Allergies & diet",
+  kidsAllergies: "Children",
+  noAllergies: "None given",
+  allergyCount: (n) => `${n} with allergies or dietary needs`,
   expectedToCome: "Expected to come",
   inviteSent: "Invitation sent",
   update: "Update",

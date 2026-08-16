@@ -18,6 +18,7 @@ export type DemoGuest = {
   status: string;
   guestCount: number;
   kids: number;
+  kidsAllergies: string;
   maxGuests: number;
   maxKids: number;
   bones: number;
@@ -29,12 +30,15 @@ export type DemoGuest = {
 export function demoGuest(overrides: Partial<DemoGuest> = {}): DemoGuest {
   return {
     guestCode: DEMO_CODE,
-    name: "Demo",
+    // Two people on the line, so the demo shows the reply as it really works:
+    // one invitation, answered person by person.
+    name: "Demo and Friend",
     status: "PENDING",
-    guestCount: 1,
+    guestCount: 2,
     kids: 0,
+    kidsAllergies: "",
     // generous demo invitation, so every part of the form is reachable
-    maxGuests: 4,
+    maxGuests: 2,
     maxKids: 2,
     bones: 0,
     blessings: 0,

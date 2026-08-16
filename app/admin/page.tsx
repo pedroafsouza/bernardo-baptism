@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { GROUPS, STATUSES } from "@/lib/config";
 import Icon, { type IconName } from "@/components/Icon";
 import InviteMessageModal from "@/components/admin/InviteMessageModal";
@@ -10,6 +10,11 @@ import AuditPanel from "@/components/admin/AuditPanel";
 import PasswordChangeGate from "@/components/admin/PasswordChangeGate";
 import { copyText } from "@/lib/clipboard";
 import { headcount } from "@/lib/capacity";
+import {
+  summarizeAllergies,
+  summarizeAttendees,
+  type AttendeeSlot,
+} from "@/lib/attendees";
 import {
   useAdminLang,
   ADMIN_LANGS,
@@ -28,6 +33,9 @@ type Guest = {
   maxKids: number;
   guestCount: number;
   kids: number;
+  kidsAllergies: string;
+  /** Who is on this invitation and what each of them answered. */
+  attendees: AttendeeSlot[];
   likely: boolean;
   inviteSent: boolean;
   inviteSentAt: string | null;
@@ -106,6 +114,8 @@ function AdminPageInner() {
   const [filterSent, setFilterSent] = useState("ALL");
   const [form, setForm] = useState({ ...emptyForm });
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  // Households whose individual answers are unfolded in the table.
+  const [openPeople, setOpenPeople] = useState<Record<string, boolean>>({});
   const [messageGuest, setMessageGuest] = useState<Guest | null>(null);
   // Language the copied guest links open in — the guests are Danish, English
   // and Brazilian, so the link carries the language it was written for.
@@ -342,6 +352,9 @@ function AdminPageInner() {
     // capacity was tightened can never inflate the totals, and a household
     // invited without children never contributes any.
     const { adults, kids } = headcount(guests);
+    const withAllergies = guests.filter(
+      (g) => summarizeAllergies(g.attendees ?? [], g.kidsAllergies ?? "").length > 0
+    ).length;
     const played = guests.filter((g) => g.playedAt).length;
     const sent = guests.filter((g) => g.inviteSent).length;
     return {
@@ -354,18 +367,22 @@ function AdminPageInner() {
       pending,
       played,
       sent,
+      withAllergies,
     };
   }, [guests]);
 
   function exportCsv() {
     const header = [
       "guestCode", "name", "group", "status", "maxGuests", "maxKids", "guestCount", "kids", "likely",
+      "people", "allergies",
       "inviteSent", "inviteSentAt", "bones", "blessings", "score", "playedAt", "updatedAt",
     ];
     const rows = guests.map((g) =>
       [
         g.guestCode, g.name, g.group, g.status, g.maxGuests, g.maxKids,
         g.guestCount, g.kids, g.likely,
+        summarizeAttendees(g.attendees ?? []),
+        summarizeAllergies(g.attendees ?? [], g.kidsAllergies ?? ""),
         g.inviteSent, g.inviteSentAt ?? "",
         g.bones, g.blessings, g.score, g.playedAt ?? "", g.updatedAt,
       ]
@@ -575,6 +592,12 @@ function AdminPageInner() {
             <div className="text-[13px] opacity-70 mt-1">
               {t.adultsKids(metrics.adults, metrics.kids)}
             </div>
+            {metrics.withAllergies > 0 && (
+              <div className="text-[13px] mt-1 flex items-center gap-1.5">
+                <Icon name="warning" className="h-4 w-4 shrink-0 text-yellow-700" />
+                {t.allergyCount(metrics.withAllergies)}
+              </div>
+            )}
           </div>
           <div>
             <div className="text-[14px] opacity-70 mb-1 flex items-center gap-2">
@@ -906,8 +929,13 @@ function AdminPageInner() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((g) => (
-                <tr key={g.id} className="border-b-2 border-black/10">
+              {filtered.map((g) => {
+                const people = g.attendees ?? [];
+                const allergies = summarizeAllergies(people, g.kidsAllergies ?? "");
+                const expanded = openPeople[g.id] ?? false;
+                return (
+                <Fragment key={g.id}>
+                <tr className="border-b-2 border-black/10">
                   <td className="p-2 text-center">
                     <input
                       type="checkbox"
@@ -927,12 +955,33 @@ function AdminPageInner() {
                   </td>
                   <td className="p-2">{g.guestCode}</td>
                   <td className="p-2">
-                    {g.name}
-                    {!g.likely && (
-                      <span className="ml-1 opacity-50" title={t.notExpected}>
-                        (?)
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1.5">
+                      {/* One line in the list, several people behind it. */}
+                      <button
+                        type="button"
+                        aria-expanded={expanded}
+                        title={expanded ? t.hidePeople : t.showPeople}
+                        onClick={() =>
+                          setOpenPeople((o) => ({ ...o, [g.id]: !expanded }))
+                        }
+                        className="pixel-btn border-2 border-black bg-white p-0.5"
+                      >
+                        <Icon name={expanded ? "up" : "down"} className="h-4 w-4" />
+                      </button>
+                      <span>{g.name}</span>
+                      {allergies && (
+                        <Icon
+                          name="warning"
+                          className="h-4 w-4 shrink-0 text-yellow-700"
+                          title={allergies}
+                        />
+                      )}
+                      {!g.likely && (
+                        <span className="opacity-50" title={t.notExpected}>
+                          (?)
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="p-2">{g.group}</td>
                   <td className="p-2">
@@ -1016,7 +1065,77 @@ function AdminPageInner() {
                     </div>
                   </td>
                 </tr>
-              ))}
+                {expanded && (
+                  <tr className="border-b-2 border-black/10 bg-pastel-cream">
+                    <td colSpan={9} className="p-3">
+                      <div className="text-[13px] flex flex-col gap-2">
+                        <div className="flex items-center gap-2 font-bold">
+                          <Icon name="guests" className="h-4 w-4 shrink-0" />
+                          {t.whoIsComing}
+                        </div>
+                        <ul className="flex flex-col gap-1">
+                          {people.map((person) => (
+                            <li
+                              key={person.position}
+                              className="flex flex-wrap items-center gap-2"
+                            >
+                              <span
+                                className={`inline-flex items-center gap-1 border-2 border-black px-2 py-0.5 ${
+                                  person.status === "ATTENDING"
+                                    ? "bg-pastel-green"
+                                    : person.status === "DECLINED"
+                                    ? "bg-pastel-pink"
+                                    : "bg-pastel-yellow"
+                                }`}
+                              >
+                                <Icon
+                                  name={
+                                    person.status === "ATTENDING"
+                                      ? "attending"
+                                      : person.status === "DECLINED"
+                                      ? "declined"
+                                      : "pending"
+                                  }
+                                  className="h-4 w-4 shrink-0"
+                                />
+                                {person.status === "ATTENDING"
+                                  ? t.personAttending
+                                  : person.status === "DECLINED"
+                                  ? t.personDeclined
+                                  : t.personPending}
+                              </span>
+                              <span>{person.name}</span>
+                              {/* Only somebody who is coming eats with us. */}
+                              {person.status === "ATTENDING" && (
+                                <span className="opacity-70">
+                                  {t.allergies}:{" "}
+                                  {person.allergies.trim() || t.noAllergies}
+                                </span>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                        {g.maxKids > 0 && (
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="inline-flex items-center gap-1 border-2 border-black bg-white px-2 py-0.5">
+                              <Icon name="child" className="h-4 w-4 shrink-0" />
+                              {t.kidsAllergies}: {g.kids}
+                            </span>
+                            {g.kids > 0 && (
+                              <span className="opacity-70">
+                                {t.allergies}:{" "}
+                                {(g.kidsAllergies ?? "").trim() || t.noAllergies}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
+                );
+              })}
               {filtered.length === 0 && (
                 <tr>
                   <td colSpan={9} className="p-4 text-center opacity-60">
