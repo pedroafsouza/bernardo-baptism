@@ -31,9 +31,13 @@ const SECURITY_HEADERS: Record<string, string> = {
     "default-src 'self'",
     // Next.js injects inline hydration scripts and Tailwind inline styles.
     "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-    "style-src 'self' 'unsafe-inline'",
+    // The pixel typeface (Pixelify Sans) is served by Google Fonts: the
+    // stylesheet comes from fonts.googleapis.com and the files themselves from
+    // fonts.gstatic.com. Without both, the whole site silently falls back to a
+    // generic sans-serif.
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "img-src 'self' data: blob:",
-    "font-src 'self' data:",
+    "font-src 'self' data: https://fonts.gstatic.com",
     "media-src 'self' data: blob:",
     "connect-src 'self'",
     "frame-ancestors 'none'",

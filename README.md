@@ -56,6 +56,74 @@ Built with Next.js 15 · React 19 · Phaser 3 · Prisma + SQLite · Tailwind
 
 ---
 
+## Screenshots
+
+Every guest opens their own link and is greeted by name — then the level starts.
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/invitation.png" alt="Bernardo greets every person on the invitation by name" /></td>
+    <td width="50%"><img src="docs/screenshots/controls.png" alt="The controls: move, hop, blessings and bones" /></td>
+  </tr>
+  <tr>
+    <td align="center"><em>Bernardo greets every person on the invitation, by name</em></td>
+    <td align="center"><em>Four lines of instructions, and you are off</em></td>
+  </tr>
+</table>
+
+A single 132-tile level runs from Hvidovre Hospital, where Bernardo was born, all
+the way to Filips Kirke — past windmills, half-timbered houses, a lighthouse, and
+flagpoles cycling Denmark → Brazil → Pernambuco → Straw Hat.
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/gameplay-hospital.png" alt="The start of the level, outside Hvidovre Hospital" /></td>
+    <td width="50%"><img src="docs/screenshots/gameplay-village.png" alt="Midway through the level, past the village" /></td>
+  </tr>
+  <tr>
+    <td align="center"><em>The run starts where Bernardo did</em></td>
+    <td align="center"><em>Oscar grows with every bone he is fed</em></td>
+  </tr>
+</table>
+
+<div align="center">
+  <img src="docs/screenshots/church.png" width="720" alt="Bernardo and Oscar arriving at the church" />
+  <br />
+  <em>The finish line: 250 points, and the RSVP opens</em>
+</div>
+
+The reply is per person, not per invitation — "Marie and Kevin" answer
+separately, for the church and for the party.
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/score.png" alt="The score screen after reaching the church" /></td>
+    <td width="50%"><img src="docs/screenshots/rsvp.png" alt="The RSVP form, answered person by person" /></td>
+  </tr>
+  <tr>
+    <td align="center"><em>10 per bone, 100 per blessing, 250 for the church</em></td>
+    <td align="center"><em>One invitation, answered person by person</em></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/competition.png" alt="The daily bone race and the all-time leaderboard" /></td>
+    <td width="50%"><img src="docs/screenshots/danish.png" alt="The same invitation in Danish" /></td>
+  </tr>
+  <tr>
+    <td align="center"><em>A fresh bone race every day, plus the all-time board</em></td>
+    <td align="center"><em>Dansk by default — <code>?lang=</code> switches it</em></td>
+  </tr>
+</table>
+
+Behind the invitation there is a small admin panel: who has replied, who is
+coming to the church, who is staying for the party, and a copyable personal link
+per household. *(Guest names below are stand-ins.)*
+
+<div align="center">
+  <img src="docs/screenshots/admin.png" width="820" alt="The admin panel: RSVP totals, invite links and the leaderboard" />
+</div>
+
+---
+
 ## Daily bones
 
 Oscar has to be fed *every day*, so the treats are no longer part of the level:
