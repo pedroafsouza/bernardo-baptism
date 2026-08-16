@@ -32,6 +32,7 @@ import {
   type AdminLang,
 } from "@/lib/adminI18n";
 import { MESSAGE_LANGS, type MessageLang } from "@/lib/invite";
+import { withLangParam } from "@/lib/langParam";
 import AnswerButtons from "@/components/admin/AnswerButtons";
 import {
   fetchGuests,
@@ -578,7 +579,7 @@ function AdminPageInner() {
             <LangToggle lang={lang} setLang={setLang} label={t.language} />
             {tab === "guests" && (
               <Link
-                href="/admin/report"
+                href={withLangParam("/admin/report", lang)}
                 className="pixel-btn bg-pastel-blue border-4 border-black py-2 px-3 text-[14px] flex items-center gap-2"
               >
                 <Icon name="print" /> {t.report}

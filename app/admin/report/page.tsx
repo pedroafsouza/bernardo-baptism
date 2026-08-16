@@ -14,6 +14,7 @@ import {
 import { attending, summarizeAllergies, type AttendeeSlot } from "@/lib/attendees";
 import { clampParty, headcount } from "@/lib/capacity";
 import { EVENT } from "@/lib/config";
+import { withLangParam } from "@/lib/langParam";
 
 type Screen = "loading" | "ready" | "denied" | "error";
 
@@ -127,7 +128,7 @@ function ReportInner() {
             {screen === "denied" ? t.adminLogin : t.couldNotLoad}
           </p>
           <Link
-            href="/admin"
+            href={withLangParam("/admin", lang)}
             className="pixel-btn inline-flex items-center gap-2 bg-pastel-green border-4 border-black py-2 px-3 text-[14px]"
           >
             <Icon name="left" /> {t.backToPanel}
@@ -169,7 +170,7 @@ function ReportInner() {
               <Icon name="print" /> {t.print}
             </button>
             <Link
-              href="/admin"
+              href={withLangParam("/admin", lang)}
               className="pixel-btn bg-white border-4 border-black py-2 px-3 text-[14px] flex items-center gap-2"
             >
               <Icon name="left" /> {t.backToPanel}

@@ -313,37 +313,46 @@ export default function GuestFormModal({
               {people.map((person) => (
                 <li
                   key={person.position}
-                  className="flex flex-wrap items-center gap-2 text-[13px]"
+                  className="flex flex-wrap items-start gap-2 text-[13px]"
                 >
-                  <span className="min-w-[7rem] font-bold break-words">{person.name}</span>
-                  {(
-                    [
-                      ["church", t.atChurch, person.church],
-                      ["reception", t.atReception, person.reception],
-                    ] as const
-                  ).map(([part, label, said]) => (
-                    <AnswerButtons
-                      key={part}
-                      said={said}
-                      label={label}
-                      attendingText={t.personAttending}
-                      declinedText={t.personDeclined}
-                      pendingText={t.personPending}
-                      title={t.answerFor(person.name)}
-                      onAnswer={(next: AttendeeStatus) => editPerson(person.position, { [part]: next })}
-                    />
-                  ))}
-                  {person.reception === "ATTENDING" && (
-                    <input
-                      value={person.allergies}
-                      onChange={(e) =>
-                        editPerson(person.position, { allergies: e.target.value })
-                      }
-                      placeholder={t.allergyPlaceholder}
-                      aria-label={`${t.allergies} — ${person.name}`}
-                      className="border-2 border-black p-1 text-[13px] flex-1 min-w-[8rem]"
-                    />
-                  )}
+                  <span className="w-full sm:w-[7rem] sm:shrink-0 font-bold break-words sm:pt-1">
+                    {person.name}
+                  </span>
+                  {/* Every answer starts at the same left edge, so a row reads
+                      as "this person" on the left and "these choices" on the
+                      right however far the names wrap. */}
+                  <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[12rem]">
+                    {(
+                      [
+                        ["church", t.atChurch, person.church],
+                        ["reception", t.atReception, person.reception],
+                      ] as const
+                    ).map(([part, label, said]) => (
+                      <AnswerButtons
+                        key={part}
+                        said={said}
+                        label={label}
+                        attendingText={t.personAttending}
+                        declinedText={t.personDeclined}
+                        pendingText={t.personPending}
+                        title={t.answerFor(person.name)}
+                        onAnswer={(next: AttendeeStatus) =>
+                          editPerson(person.position, { [part]: next })
+                        }
+                      />
+                    ))}
+                    {person.reception === "ATTENDING" && (
+                      <input
+                        value={person.allergies}
+                        onChange={(e) =>
+                          editPerson(person.position, { allergies: e.target.value })
+                        }
+                        placeholder={t.allergyPlaceholder}
+                        aria-label={`${t.allergies} — ${person.name}`}
+                        className="border-2 border-black p-1 text-[13px] flex-1 min-w-[8rem]"
+                      />
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>
