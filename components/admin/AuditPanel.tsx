@@ -35,6 +35,7 @@ const LOOK: Record<string, { icon: IconName; className: string }> = {
   INVITE_MESSAGE_OPENED: { icon: "mail", className: "bg-pastel-cream" },
   GUEST_LINK_COPIED: { icon: "copy", className: "bg-pastel-cream" },
   RSVP_SUBMITTED: { icon: "attending", className: "bg-pastel-green" },
+  RSVP_EDITED: { icon: "edit", className: "bg-pastel-green" },
   DATABASE_RESET: { icon: "warning", className: "bg-pastel-pink" },
   RATE_LIMITED: { icon: "warning", className: "bg-pastel-yellow" },
   REQUEST_BLOCKED: { icon: "warning", className: "bg-pastel-pink" },

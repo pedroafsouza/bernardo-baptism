@@ -106,6 +106,7 @@ leaderboard — is one tap away, and stays reachable after the reply is sent.
 | `GET /api/bones`          | The day currently open, how many bones it holds, and (with `?code=`) which of them a guest already has |
 | `POST /api/bones`         | Hand in a batch: `{ guestCode, day, bones: number[] }`    |
 | `GET /api/bones/leaderboard` | Today's race and the all-time race                    |
+| `POST /api/visit`         | Counts an opened invitation, once per browser session    |
 
 ---
 
@@ -118,11 +119,22 @@ leaderboard — is one tap away, and stays reachable after the reply is sent.
 - **Invitation generator**: per guest, in **Danish, English and Portuguese**,
   in a short WhatsApp form and a long e-mail form, with copy-to-clipboard plus
   direct "open WhatsApp" / "open e-mail" links
+- **Adding and editing households** — invitation codes are proposed from the
+  names as you type (and can always be overruled), and a household's answer can
+  be given person by person straight from the list, for the replies that arrive
+  by phone or at the door. "No answer yet" is a real state: answering for one
+  person never decides for anybody else, and pressing an answer again takes it
+  back
 - **Invitation-sent tracking** with a timestamp, a filter and a progress bar
 - Headline counters: how many have accepted, and how many people that is
   (adults + kids) — always counted within each invitation's capacity, so a
   household invited without children never appears with any
 - CSV export
+- **Visits** — who has actually opened their invitation, by country, browser,
+  system, device, language and where the link was followed from, with the public
+  demo counted separately and a per-household list showing who has never looked.
+  No addresses are stored: a visitor is a hash of address, browser and *day*,
+  so the count is honest for a day and anonymous forever
 - **Activity log** — every login (successful, failed or locked out), every
   invitation sent or opened, every guest and administrator change, every
   database reset and every blocked or throttled request, filterable by action
@@ -319,6 +331,9 @@ lib/                 config, i18n, invite templates, auth, audit, rate limiting
 lib/dailyBones.ts    the day's bone layout, derived from the date
 lib/boneReporter.ts  the 500 ms throttled queue that hands bones in
 lib/names.ts         splitting a household line into the people in it
+lib/inviteCode.ts    proposing an invitation code from the names on it
+lib/rsvpAnswers.ts   applying an answer, whoever gave it, to the right people
+lib/visitInfo.ts     what a visit says about itself — country, browser, device
 middleware.ts        Rate limiting, injection screening and security headers
 lib/levels/          level data
 prisma/              schema, seed, verification and the real guest list

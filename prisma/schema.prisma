@@ -156,3 +156,34 @@ model BoneCollection {
   @@index([guestCode])
   @@index([day])
 }
+
+/// One arrival on the invitation site.
+///
+/// Nothing here identifies a person: no address is stored, only a daily
+/// one-way hash of it, so the same guest can be recognised as one visitor for
+/// the day and never afterwards. It answers the questions the hosts actually
+/// ask — has this household opened their invitation, and how many people are
+/// looking at it from Brazil.
+model Visit {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  /// The invitation that was opened, "DEMO" for the public demo, and empty for
+  /// somebody who arrived without a code at all.
+  guestCode String   @default("")
+  demo      Boolean  @default(false)
+  /// Two letters from the hosting edge when it knows, "??" when it does not.
+  country   String   @default("??")
+  browser   String   @default("Unknown")
+  os        String   @default("Unknown")
+  device    String   @default("Unknown")
+  /// The language the invitation was read in.
+  lang      String   @default("")
+  /// Where the visit came from — WhatsApp, mail, or nothing at all.
+  referrer  String   @default("")
+  /// Hash of address + browser + day. Uniqueness for a day, anonymity forever.
+  visitorId String   @default("")
+
+  @@index([createdAt])
+  @@index([guestCode])
+  @@index([visitorId])
+}

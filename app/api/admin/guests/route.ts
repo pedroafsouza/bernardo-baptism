@@ -5,8 +5,19 @@ import { audit } from "@/lib/audit";
 import { RATE_RULES, rateLimit } from "@/lib/rateLimit";
 import { clientIp, readJson, safeId, safeInt, safeString } from "@/lib/security";
 import { clampParty } from "@/lib/capacity";
-import { attendeeSlots, type AttendeeSlot } from "@/lib/attendees";
+import {
+  attendeeSlots,
+  partyFromAttendees,
+  summarizeAttendees,
+  type AttendeeSlot,
+} from "@/lib/attendees";
 import { loadAttendeeSlots, saveAttendeeSlots } from "@/lib/attendeeStore";
+import {
+  applyAnswers,
+  fitsInvitation,
+  safeAllergies,
+  type PostedAttendee,
+} from "@/lib/rsvpAnswers";
 
 export const dynamic = "force-dynamic";
 
@@ -241,7 +252,14 @@ export async function POST(req: NextRequest) {
   }
 }
 
-/** Lightweight toggle used by the "invitation sent" checkbox in the admin table. */
+/**
+ * The small edits made straight from the guest list: ticking an invitation as
+ * sent, and answering for a household that replied by phone or in person.
+ *
+ * An answer given here goes through exactly the same door as the guest's own
+ * reply — the same people, the same two halves of the day, the same ceiling —
+ * so the two can never drift apart.
+ */
 export async function PATCH(req: NextRequest) {
   const throttled = throttle(req);
   if (throttled) return throttled;
@@ -249,7 +267,14 @@ export async function PATCH(req: NextRequest) {
   const session = await requireAdmin(req);
   if (isAuthFailure(session)) return session.response;
 
-  const body = await readJson<{ id?: unknown; inviteSent?: unknown }>(req, 2048);
+  const body = await readJson<{
+    id?: unknown;
+    inviteSent?: unknown;
+    attendees?: unknown;
+    churchKids?: unknown;
+    kids?: unknown;
+    kidsAllergies?: unknown;
+  }>(req, 4096);
   if (!body.ok) return NextResponse.json({ error: body.error }, { status: body.status });
 
   const id = safeId(body.data.id);
@@ -260,6 +285,48 @@ export async function PATCH(req: NextRequest) {
   const existing = await prisma.guest.findUnique({ where: { id } });
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  if (Array.isArray(body.data.attendees)) {
+    const slots = applyAnswers(
+      await loadAttendeeSlots(existing),
+      (body.data.attendees as PostedAttendee[]).slice(0, 20)
+    );
+    const answered = partyFromAttendees(slots, {
+      church: safeInt(body.data.churchKids, 0, 10, existing.churchKids),
+      reception: safeInt(body.data.kids, 0, 10, existing.kids),
+    });
+    const party = fitsInvitation(answered, existing);
+    const kidsAllergies = safeAllergies(body.data.kidsAllergies);
+
+    const guest = await prisma.guest.update({
+      where: { id },
+      data: {
+        status: answered.status,
+        churchCount: party.churchCount,
+        churchKids: party.churchKids,
+        guestCount: party.guestCount,
+        kids: party.kids,
+        kidsAllergies: party.kids > 0 ? kidsAllergies : "",
+      },
+    });
+    await saveAttendeeSlots(guest.guestCode, slots);
+
+    await audit({
+      action: "RSVP_EDITED",
+      actorName: session.admin.username,
+      actorId: session.admin.id,
+      targetType: "guest",
+      targetId: guest.guestCode,
+      detail: `${guest.name} · ${summarizeAttendees(slots)}`,
+      req,
+    });
+
+    return NextResponse.json({
+      ok: true,
+      guest,
+      attendees: slots,
+    });
   }
 
   const sent = Boolean(body.data.inviteSent);

@@ -8,6 +8,9 @@
  * `guestCount` is the number of adults the household is invited to bring and
  * `kids` how many children — both are maximums. A household with `kids: 0` is
  * invited without children, and the RSVP form will not even offer the choice.
+ *
+ * This list is the invitation, not the answer: seeding updates names, groups
+ * and capacity, and never touches a reply somebody has already given.
  */
 export type SeedGuest = {
   guestCode: string;
@@ -50,7 +53,6 @@ export const SEED_GUESTS: SeedGuest[] = [
   { guestCode: "ANDREHARDO", name: "Andreh", group: "Friends", guestCount: 1, kids: 0, likely: true },
   { guestCode: "CINTIARDO", name: "Cintia", group: "Friends", guestCount: 1, kids: 0, likely: true },
   { guestCode: "MARCOFU", name: "Marco and Fu Fei", group: "Friends", guestCount: 2, kids: 2, likely: true },
-  { guestCode: "AYOICA", name: "Ayoub and Monica", group: "Friends", guestCount: 2, kids: 1, likely: true },
   { guestCode: "OLIVIARDO", name: "Olivia", group: "Friends", guestCount: 1, kids: 0, likely: true },
   { guestCode: "ISACOB", name: "Isa and Jacob", group: "Friends", guestCount: 2, kids: 1, likely: true },
   { guestCode: "MONICARDO", name: "Monica", group: "Friends", guestCount: 1, kids: 0, likely: true },
@@ -70,13 +72,27 @@ export const SEED_GUESTS: SeedGuest[] = [
   { guestCode: "THADRA", name: "Thales and Sandra", group: "Friends", guestCount: 2, kids: 2, likely: true },
   { guestCode: "MIRZAFRU", name: "Mirza and Wife", group: "Friends", guestCount: 2, kids: 0, likely: true },
   { guestCode: "DANILARDO", name: "Danilo", group: "Friends", guestCount: 1, kids: 0, likely: true },
+  { guestCode: "KISSARDO", name: "Kiss", group: "Friends", guestCount: 1, kids: 0, likely: true },
+  { guestCode: "DANIRINA", name: "Daniel and Irina", group: "Friends", guestCount: 2, kids: 0, likely: true },
+  { guestCode: "WASHDICIS", name: "Washigton and Medicis", group: "Friends", guestCount: 2, kids: 0, likely: true },
+  { guestCode: "ALVARCELA", name: "Alvaro and Marcela", group: "Friends", guestCount: 2, kids: 0, likely: true },
+  { guestCode: "SUELIARDO", name: "Sueli", group: "Family", guestCount: 1, kids: 0, likely: true },
+  { guestCode: "NATAVO", name: "Natalia and Gustavo", group: "Friends", guestCount: 2, kids: 1, likely: true },
+  { guestCode: "CARLOSCREW", name: "Carlos, Dinha, Sonia, Morges", group: "Family", guestCount: 4, kids: 0, likely: true },
+  { guestCode: "ESDVLADIA", name: "Esdras, Vladia e Cecilia", group: "Family", guestCount: 2, kids: 1, likely: true },
+  { guestCode: "CLAUDMOR", name: "Claude and Mor", group: "Family", guestCount: 2, kids: 0, likely: true },
+  { guestCode: "ANAJUNIOR", name: "Ana and Junior", group: "Family", guestCount: 2, kids: 0, likely: true },
+  { guestCode: "PEDROTATY", name: "Pedro and Taty", group: "Family", guestCount: 2, kids: 0, likely: true },
+  { guestCode: "PAIOLGA", name: "Pai and Olga", group: "Family", guestCount: 2, kids: 0, likely: true },
 
-  // "Likely: No" on the original list — invited, but far away / unlikely to travel.
-  { guestCode: "PAVELARDO", name: "Pavel", group: "Friends", guestCount: 1, kids: 0, likely: false },
+  // Invited, but far away and unlikely to travel.
   { guestCode: "EDUARDARDO", name: "Eduardo", group: "Family", guestCount: 1, kids: 0, likely: false },
-  { guestCode: "ESDVLADIA", name: "Esdras & Vladia", group: "Family", guestCount: 2, kids: 1, likely: false },
+
+  // Invited earlier and kept on the list: they are not on the latest sheet, but
+  // an invitation already went their way and nobody withdraws one of those.
+  { guestCode: "PAVELARDO", name: "Pavel", group: "Friends", guestCount: 1, kids: 0, likely: false },
+  { guestCode: "AYOICA", name: "Ayoub and Monica", group: "Friends", guestCount: 2, kids: 1, likely: true },
   { guestCode: "LUISANA", name: "Ana Luisa", group: "Family", guestCount: 2, kids: 2, likely: false },
   { guestCode: "ESDOLGA", name: "Esdras & Olga", group: "Family", guestCount: 2, kids: 1, likely: false },
-  { guestCode: "CARLOSCREW", name: "Carlos, Dinha, Sonia & Morges", group: "Family", guestCount: 3, kids: 0, likely: false },
   { guestCode: "HERAROSE", name: "Heraldo & Rose", group: "Family", guestCount: 2, kids: 0, likely: false },
 ];

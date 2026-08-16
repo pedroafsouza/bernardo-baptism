@@ -1,12 +1,21 @@
 "use client";
 
-import { Fragment, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Fragment,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { GROUPS, STATUSES } from "@/lib/config";
 import Icon, { type IconName } from "@/components/Icon";
 import InviteMessageModal from "@/components/admin/InviteMessageModal";
 import DangerZone from "@/components/admin/DangerZone";
 import AdminsPanel from "@/components/admin/AdminsPanel";
 import AuditPanel from "@/components/admin/AuditPanel";
+import VisitsPanel from "@/components/admin/VisitsPanel";
 import PasswordChangeGate from "@/components/admin/PasswordChangeGate";
 import { copyText } from "@/lib/clipboard";
 import { clampParty, headcount } from "@/lib/capacity";
@@ -22,6 +31,7 @@ import {
   type AdminLang,
 } from "@/lib/adminI18n";
 import { MESSAGE_LANGS, type MessageLang } from "@/lib/invite";
+import { inviteCodeFromName } from "@/lib/inviteCode";
 
 type Guest = {
   id: string;
@@ -71,7 +81,7 @@ type AdminIdentity = {
   mustChangePassword: boolean;
 };
 
-type Tab = "guests" | "audit" | "admins" | "account";
+type Tab = "guests" | "visits" | "audit" | "admins" | "account";
 
 function LangToggle({
   lang,
@@ -111,6 +121,17 @@ function AdminPageInner() {
   const [tab, setTab] = useState<Tab>("guests");
   const [notice, setNotice] = useState<string | null>(null);
   const [guests, setGuests] = useState<Guest[]>([]);
+  /**
+   * The guest list as it stands right now, not as it stood when the last render
+   * happened. Answering two people in the same breath is normal at a kitchen
+   * table, and each answer has to be laid on top of the previous one rather
+   * than on top of what the screen happened to show a moment ago.
+   */
+  const guestsRef = useRef<Guest[]>([]);
+  const putGuests = useCallback((next: (prev: Guest[]) => Guest[]) => {
+    guestsRef.current = next(guestsRef.current);
+    setGuests(guestsRef.current);
+  }, []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -181,7 +202,7 @@ function AdminPageInner() {
         return false;
       }
       const data = await res.json();
-      setGuests(data.guests || []);
+      putGuests(() => data.guests || []);
       return true;
     } catch (e: any) {
       setError(e.message || t.couldNotLoad);
@@ -225,7 +246,7 @@ function AdminPageInner() {
   async function logout() {
     await fetch("/api/admin/login", { method: "DELETE", credentials: "same-origin" });
     setAdmin(null);
-    setGuests([]);
+    putGuests(() => []);
     setUsername("");
     setPassword("");
     setTab("guests");
@@ -292,7 +313,7 @@ function AdminPageInner() {
    * refuses, so ticking off 58 invitations doesn't feel like waiting on a queue.
    */
   async function setInviteSent(g: Guest, sent: boolean) {
-    setGuests((prev) =>
+    putGuests((prev) =>
       prev.map((x) => (x.id === g.id ? { ...x, inviteSent: sent } : x))
     );
     setMessageGuest((m) => (m && m.id === g.id ? { ...m, inviteSent: sent } : m));
@@ -306,6 +327,85 @@ function AdminPageInner() {
       setError(t.couldNotUpdateSent);
       await load();
     }
+  }
+
+  /**
+   * Answers a household's invitation on their behalf — for the replies that
+   * arrive by phone, in the schoolyard or at the door. The server recomputes
+   * the household from the individual answers, so the numbers in the table can
+   * never disagree with the people behind them.
+   */
+  /** The household as it stands now, whatever the screen was showing. */
+  function latest(g: Guest): Guest {
+    return guestsRef.current.find((x) => x.id === g.id) ?? g;
+  }
+
+  async function saveAnswers(
+    guest: Guest,
+    people: AttendeeSlot[],
+    extra: { churchKids?: number; kids?: number; kidsAllergies?: string } = {}
+  ) {
+    const g = latest(guest);
+    putGuests((prev) =>
+      prev.map((x) => (x.id === g.id ? { ...x, ...extra, attendees: people } : x))
+    );
+    const res = await fetch("/api/admin/guests", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({
+        id: g.id,
+        // Sent as the three real states, never as a yes/no: an unanswered
+        // person must stay unanswered when somebody else is ticked off.
+        attendees: people.map((p) => ({
+          position: p.position,
+          church: p.church,
+          reception: p.reception,
+          allergies: p.allergies,
+        })),
+        churchKids: extra.churchKids ?? g.churchKids,
+        kids: extra.kids ?? g.kids,
+        kidsAllergies: extra.kidsAllergies ?? g.kidsAllergies ?? "",
+      }),
+    });
+    if (!res.ok) {
+      setError(t.couldNotSave);
+      await load();
+      return;
+    }
+    const data = await res.json().catch(() => null);
+    if (data?.guest) {
+      putGuests((prev) =>
+        prev.map((x) =>
+          x.id === g.id ? { ...x, ...data.guest, attendees: data.attendees ?? people } : x
+        )
+      );
+    }
+  }
+
+  /**
+   * Answers one half of the day for one person, leaving everybody else alone.
+   * Pressing the answer somebody already gave takes it back, because an
+   * administrator who ticks the wrong box needs a way out of it.
+   */
+  function answerPart(
+    guest: Guest,
+    position: number,
+    part: "church" | "reception",
+    said: string
+  ) {
+    const g = latest(guest);
+    const people = (g.attendees ?? []).map((p) =>
+      p.position === position
+        ? {
+            ...p,
+            [part]: said,
+            allergies:
+              part === "reception" && said !== "ATTENDING" ? "" : p.allergies,
+          }
+        : p
+    );
+    void saveAnswers(g, people);
   }
 
   async function copyUrl(code: string) {
@@ -543,6 +643,7 @@ function AdminPageInner() {
           {(
             [
               { id: "guests", label: t.menuGuests, icon: "guests" },
+              { id: "visits", label: t.menuVisits, icon: "views" },
               { id: "audit", label: t.menuAudit, icon: "keyboard" },
               { id: "admins", label: t.menuAdmins, icon: "lock" },
               { id: "account", label: t.menuAccount, icon: "key" },
@@ -574,6 +675,8 @@ function AdminPageInner() {
             <Icon name="done" /> {notice}
           </p>
         )}
+
+        {tab === "visits" && <VisitsPanel t={t} locale={locale} />}
 
         {tab === "audit" && <AuditPanel t={t} locale={locale} />}
 
@@ -763,17 +866,51 @@ function AdminPageInner() {
             <Icon name={form.id ? "edit" : "addGuest"} />
             {form.id ? t.editGuest : t.addGuest}
           </div>
-          <input
-            required
-            value={form.guestCode}
-            onChange={(e) => setForm({ ...form, guestCode: e.target.value })}
-            placeholder="GUEST_XYZ"
-            className="border-4 border-black p-2 text-[14px] sm:col-span-1"
-          />
+          <div className="flex items-stretch gap-1 sm:col-span-1">
+            <input
+              required
+              value={form.guestCode}
+              onChange={(e) => setForm({ ...form, guestCode: e.target.value })}
+              placeholder="GUEST_XYZ"
+              className="border-4 border-black p-2 text-[14px] w-full min-w-0"
+            />
+            <button
+              type="button"
+              title={t.generateCode}
+              aria-label={t.generateCode}
+              onClick={() =>
+                setForm((f) => ({
+                  ...f,
+                  guestCode: inviteCodeFromName(
+                    f.name,
+                    guests.filter((x) => x.id !== f.id).map((x) => x.guestCode)
+                  ),
+                }))
+              }
+              className="pixel-btn border-4 border-black bg-pastel-yellow px-2 shrink-0"
+            >
+              <Icon name="magic" className="h-4 w-4" />
+            </button>
+          </div>
           <input
             required
             value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            onChange={(e) => {
+              const name = e.target.value;
+              setForm((f) => {
+                const others = guests.map((x) => x.guestCode);
+                // A new household gets a code proposed as you type, until
+                // somebody types their own; an existing one keeps the code its
+                // guests already have in their pocket.
+                const proposed = !f.guestCode || f.guestCode === inviteCodeFromName(f.name, others);
+                return {
+                  ...f,
+                  name,
+                  guestCode:
+                    f.id || !proposed ? f.guestCode : inviteCodeFromName(name, others),
+                };
+              });
+            }}
             placeholder={t.namePlaceholder}
             className="border-4 border-black p-2 text-[14px] sm:col-span-2"
           />
@@ -1140,68 +1277,134 @@ function AdminPageInner() {
                           <Icon name="guests" className="h-4 w-4 shrink-0" />
                           {t.whoIsComing}
                         </div>
-                        <ul className="flex flex-col gap-1">
+                        <div className="text-[12px] opacity-70">{t.answerHint}</div>
+                        <ul className="flex flex-col gap-2">
                           {people.map((person) => (
                             <li
                               key={person.position}
                               className="flex flex-wrap items-center gap-2"
                             >
-                              <span className="min-w-[8rem]">{person.name}</span>
+                              <span className="min-w-[8rem] font-bold">{person.name}</span>
                               {/* Each half of the day is answered on its own. */}
                               {([
-                                [t.atChurch, person.church],
-                                [t.atReception, person.reception],
-                              ] as const).map(([label, said]) => (
+                                ["church", t.atChurch, person.church],
+                                ["reception", t.atReception, person.reception],
+                              ] as const).map(([part, label, said]) => (
                                 <span
-                                  key={label}
-                                  className={`inline-flex items-center gap-1 border-2 border-black px-2 py-0.5 ${
-                                    said === "ATTENDING"
-                                      ? "bg-pastel-green"
-                                      : said === "DECLINED"
-                                      ? "bg-pastel-pink"
-                                      : "bg-pastel-yellow"
-                                  }`}
+                                  key={part}
+                                  className="inline-flex items-center gap-1 border-2 border-black bg-white px-2 py-0.5"
                                 >
-                                  <Icon
-                                    name={
-                                      said === "ATTENDING"
-                                        ? "attending"
-                                        : said === "DECLINED"
-                                        ? "declined"
-                                        : "pending"
-                                    }
-                                    className="h-4 w-4 shrink-0"
-                                  />
-                                  {label}:{" "}
-                                  {said === "ATTENDING"
-                                    ? t.personAttending
-                                    : said === "DECLINED"
-                                    ? t.personDeclined
-                                    : t.personPending}
+                                  {label}:
+                                  {([
+                                    ["ATTENDING", "attending", t.personAttending, "bg-pastel-green"],
+                                    ["DECLINED", "declined", t.personDeclined, "bg-pastel-pink"],
+                                  ] as const).map(([value, icon, text, tone]) => (
+                                    <button
+                                      key={value}
+                                      type="button"
+                                      aria-pressed={said === value}
+                                      title={t.answerFor(person.name)}
+                                      onClick={() =>
+                                        answerPart(
+                                          g,
+                                          person.position,
+                                          part,
+                                          said === value ? "PENDING" : value
+                                        )
+                                      }
+                                      className={`pixel-btn inline-flex items-center gap-1 border-2 border-black px-1.5 py-0.5 ${
+                                        said === value ? tone : "bg-white opacity-50"
+                                      }`}
+                                    >
+                                      <Icon name={icon} className="h-3.5 w-3.5 shrink-0" />
+                                      {text}
+                                    </button>
+                                  ))}
+                                  {said === "PENDING" && (
+                                    <span className="inline-flex items-center gap-1 opacity-70">
+                                      <Icon name="pending" className="h-3.5 w-3.5 shrink-0" />
+                                      {t.personPending}
+                                    </span>
+                                  )}
                                 </span>
                               ))}
                               {/* Only somebody staying for the meal eats with us. */}
                               {person.reception === "ATTENDING" && (
-                                <span className="opacity-70">
-                                  {t.allergies}:{" "}
-                                  {person.allergies.trim() || t.noAllergies}
-                                </span>
+                                <input
+                                  defaultValue={person.allergies}
+                                  key={`${person.position}-${person.allergies}`}
+                                  placeholder={t.allergyPlaceholder}
+                                  aria-label={`${t.allergies} — ${person.name}`}
+                                  onBlur={(e) => {
+                                    const value = e.target.value.trim();
+                                    if (value === person.allergies.trim()) return;
+                                    void saveAnswers(
+                                      g,
+                                      (latest(g).attendees ?? people).map((x) =>
+                                        x.position === person.position
+                                          ? { ...x, allergies: value }
+                                          : x
+                                      )
+                                    );
+                                  }}
+                                  className="border-2 border-black px-2 py-0.5 text-[12px] min-w-[10rem]"
+                                />
                               )}
                             </li>
                           ))}
                         </ul>
-                        {g.maxKids > 0 && (
+                        {/* Children only mean something once an adult is coming. */}
+                        {g.maxKids > 0 &&
+                          people.some(
+                            (p) => p.church === "ATTENDING" || p.reception === "ATTENDING"
+                          ) && (
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="inline-flex items-center gap-1 border-2 border-black bg-white px-2 py-0.5">
                               <Icon name="child" className="h-4 w-4 shrink-0" />
-                              {t.kidsAllergies}: {t.atChurch} {g.churchKids} · {t.atReception}{" "}
-                              {g.kids}
+                              {t.kidsAllergies}
                             </span>
+                            {([
+                              ["churchKids", t.kidsAtChurch, g.churchKids, "church"],
+                              ["kids", t.kidsAtParty, g.kids, "reception"],
+                            ] as const)
+                              .filter(([, , , part]) =>
+                                people.some((p) => p[part] === "ATTENDING")
+                              )
+                              .map(([field, label, value]) => (
+                              <label key={field} className="flex items-center gap-1">
+                                {label}
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={g.maxKids}
+                                  value={value}
+                                  onChange={(e) =>
+                                    void saveAnswers(g, latest(g).attendees ?? people, {
+                                      [field]: Math.max(
+                                        0,
+                                        Math.min(g.maxKids, Number(e.target.value) || 0)
+                                      ),
+                                    })
+                                  }
+                                  className="border-2 border-black px-2 py-0.5 text-[12px] w-16"
+                                />
+                              </label>
+                              ))}
                             {g.kids > 0 && (
-                              <span className="opacity-70">
-                                {t.allergies}:{" "}
-                                {(g.kidsAllergies ?? "").trim() || t.noAllergies}
-                              </span>
+                              <input
+                                key={`kids-${g.kidsAllergies}`}
+                                defaultValue={g.kidsAllergies ?? ""}
+                                placeholder={t.allergyPlaceholder}
+                                aria-label={`${t.allergies} — ${t.kidsAllergies}`}
+                                onBlur={(e) => {
+                                  const value = e.target.value.trim();
+                                  if (value === (g.kidsAllergies ?? "").trim()) return;
+                                  void saveAnswers(g, latest(g).attendees ?? people, {
+                                    kidsAllergies: value,
+                                  });
+                                }}
+                                className="border-2 border-black px-2 py-0.5 text-[12px] min-w-[10rem]"
+                              />
                             )}
                           </div>
                         )}

@@ -12,6 +12,7 @@ import { DEMO_CODE, demoGuest, isDemoCode } from "@/lib/demo";
 import { boneDay } from "@/lib/dailyBones";
 import { attendeeSlots, type AttendeeSlot } from "@/lib/attendees";
 import { createBoneReporter, type BoneReporter } from "@/lib/boneReporter";
+import VisitTracker from "@/components/VisitTracker";
 
 const PhaserGame = dynamic(() => import("@/components/PhaserGame"), {
   ssr: false,
@@ -218,6 +219,7 @@ function InvitationInner() {
 
   return (
     <main className="game-root relative">
+      <VisitTracker code={guest.guestCode} lang={lang} />
       <PhaserGame
         key={lang}
         lang={lang}

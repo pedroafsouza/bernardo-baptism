@@ -90,6 +90,13 @@ export type AdminDict = {
   kidsAllergies: string;
   noAllergies: string;
   allergyCount: (n: number) => string;
+  /** Answering on a guest's behalf, straight from the guest list. */
+  answerFor: (name: string) => string;
+  answerHint: string;
+  allergyPlaceholder: string;
+  kidsAtChurch: string;
+  kidsAtParty: string;
+  generateCode: string;
   expectedToCome: string;
   inviteSent: string;
   update: string;
@@ -124,6 +131,28 @@ export type AdminDict = {
 
   // errors
   couldNotLoad: string;
+
+  // visits
+  allTime: string;
+  lastDays: (n: number) => string;
+  totalVisits: string;
+  visitorCount: (n: number) => string;
+  invitationsOpened: string;
+  householdsOpened: string;
+  realInvitations: string;
+  demoViews: (n: number) => string;
+  countries: string;
+  unknownCountry: string;
+  browsers: string;
+  systems: string;
+  devices: string;
+  languages: string;
+  referrers: string;
+  visitsPerGuest: string;
+  lastSeen: string;
+  neverOpened: string;
+  noVisitsYet: string;
+  visitsPrivacy: string;
   couldNotSave: string;
   couldNotUpdateSent: string;
   deleteConfirm: string;
@@ -160,6 +189,7 @@ export type AdminDict = {
   // menu
   menuGuests: string;
   menuAudit: string;
+  menuVisits: string;
   menuAdmins: string;
   menuAccount: string;
   signedInAs: (name: string) => string;
@@ -245,6 +275,7 @@ const AUDIT_LABELS_DA: Record<string, string> = {
   INVITE_MESSAGE_OPENED: "Invitation åbnet",
   GUEST_LINK_COPIED: "Gæstelink kopieret",
   RSVP_SUBMITTED: "Svar modtaget",
+  RSVP_EDITED: "Svar noteret af vært",
   DATABASE_RESET: "Database nulstillet",
   RATE_LIMITED: "Begrænset (for mange forsøg)",
   REQUEST_BLOCKED: "Forespørgsel blokeret",
@@ -269,6 +300,7 @@ const AUDIT_LABELS_EN: Record<string, string> = {
   INVITE_MESSAGE_OPENED: "Invitation opened",
   GUEST_LINK_COPIED: "Guest link copied",
   RSVP_SUBMITTED: "RSVP received",
+  RSVP_EDITED: "Answer taken by a host",
   DATABASE_RESET: "Database reset",
   RATE_LIMITED: "Rate limited",
   REQUEST_BLOCKED: "Request blocked",
@@ -390,6 +422,12 @@ const da: AdminDict = {
   kidsAllergies: "Børn",
   noAllergies: "Ingen angivet",
   allergyCount: (n) => `${n} med allergi eller kosthensyn`,
+  answerFor: (name) => `Svar for ${name}`,
+  answerHint: "Tryk for at svare på gæstens vegne",
+  allergyPlaceholder: "Allergier",
+  kidsAtChurch: "Børn i kirken",
+  kidsAtParty: "Børn til festen",
+  generateCode: "Lav kode ud fra navnet",
   expectedToCome: "Forventes at komme",
   inviteSent: "Invitation sendt",
   update: "Opdater",
@@ -421,6 +459,27 @@ const da: AdminDict = {
   noGuestsMatch: "Ingen gæster matcher filtrene.",
 
   couldNotLoad: "Kunne ikke indlæse",
+  allTime: "Alt",
+  lastDays: (n) => `${n} dage`,
+  totalVisits: "Besøg",
+  visitorCount: (n) => (n === 1 ? "1 besøgende" : `${n} besøgende`),
+  invitationsOpened: "Invitationer åbnet",
+  householdsOpened: "husstande der har set invitationen",
+  realInvitations: "Rigtige invitationer",
+  demoViews: (n) => (n === 1 ? "1 demo-visning" : `${n} demo-visninger`),
+  countries: "Lande",
+  unknownCountry: "Ukendt",
+  browsers: "Browsere",
+  systems: "Styresystemer",
+  devices: "Enheder",
+  languages: "Sprog",
+  referrers: "Kommer fra",
+  visitsPerGuest: "Besøg per gæst",
+  lastSeen: "Sidst set",
+  neverOpened: "Aldrig åbnet",
+  noVisitsYet: "Ingen besøg endnu",
+  visitsPrivacy:
+    "Ingen IP-adresser gemmes. Besøgende tælles med en hash, der kun holder én dag.",
   couldNotSave: "Kunne ikke gemme",
   couldNotUpdateSent: "Kunne ikke opdatere 'invitation sendt'",
   deleteConfirm: "Slet denne gæst?",
@@ -458,6 +517,7 @@ const da: AdminDict = {
 
   menuGuests: "Gæster",
   menuAudit: "Log",
+  menuVisits: "Besøg",
   menuAdmins: "Adgang",
   menuAccount: "Min konto",
   signedInAs: (n) => `Logget ind som ${n}`,
@@ -589,6 +649,12 @@ const en: AdminDict = {
   kidsAllergies: "Children",
   noAllergies: "None given",
   allergyCount: (n) => `${n} with allergies or dietary needs`,
+  answerFor: (name) => `Answer for ${name}`,
+  answerHint: "Tap to answer on the guest's behalf",
+  allergyPlaceholder: "Allergies",
+  kidsAtChurch: "Children at church",
+  kidsAtParty: "Children at the party",
+  generateCode: "Make a code from the name",
   expectedToCome: "Expected to come",
   inviteSent: "Invitation sent",
   update: "Update",
@@ -620,6 +686,27 @@ const en: AdminDict = {
   noGuestsMatch: "No guests match the filters.",
 
   couldNotLoad: "Could not load",
+  allTime: "All time",
+  lastDays: (n) => `${n} days`,
+  totalVisits: "Visits",
+  visitorCount: (n) => (n === 1 ? "1 visitor" : `${n} visitors`),
+  invitationsOpened: "Invitations opened",
+  householdsOpened: "households that have looked",
+  realInvitations: "Real invitations",
+  demoViews: (n) => (n === 1 ? "1 demo view" : `${n} demo views`),
+  countries: "Countries",
+  unknownCountry: "Unknown",
+  browsers: "Browsers",
+  systems: "Systems",
+  devices: "Devices",
+  languages: "Languages",
+  referrers: "Came from",
+  visitsPerGuest: "Visits per guest",
+  lastSeen: "Last seen",
+  neverOpened: "Never opened",
+  noVisitsYet: "No visits yet",
+  visitsPrivacy:
+    "No addresses are stored. Visitors are counted with a hash that lasts a single day.",
   couldNotSave: "Could not save",
   couldNotUpdateSent: "Could not update 'invitation sent'",
   deleteConfirm: "Delete this guest?",
@@ -657,6 +744,7 @@ const en: AdminDict = {
 
   menuGuests: "Guests",
   menuAudit: "Activity log",
+  menuVisits: "Visits",
   menuAdmins: "Access",
   menuAccount: "My account",
   signedInAs: (n) => `Signed in as ${n}`,

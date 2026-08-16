@@ -28,6 +28,8 @@ export const AUDIT_ACTIONS = [
   "INVITE_MESSAGE_OPENED",
   "GUEST_LINK_COPIED",
   "RSVP_SUBMITTED",
+  // An answer taken by an administrator: given by phone, in person or on paper.
+  "RSVP_EDITED",
   "DATABASE_RESET",
   "RATE_LIMITED",
   "REQUEST_BLOCKED",
