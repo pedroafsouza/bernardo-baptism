@@ -65,6 +65,10 @@ export const level01: Level = {
   // springboard and raft. A block standing right beside a step used to eat the
   // jump onto it — Bernardo's head hit the block instead of his feet finding
   // the ledge — so each one now has room on both sides to be bumped on purpose.
+  //
+  // A block also stands clear of the tall scenery — trees, signposts and flag
+  // poles all reach up into row 5, and a block sharing their column lands on
+  // top of them.
   blocks: [
     { tx: 13, ty: 5, reward: "bone" },
     { tx: 21, ty: 5, reward: "bone" },
@@ -72,7 +76,7 @@ export const level01: Level = {
     { tx: 57, ty: 5, reward: "bone" },
     { tx: 75, ty: 5, reward: "bone" },
     { tx: 92, ty: 5, reward: "bone" },
-    { tx: 117, ty: 5, reward: "bone" },
+    { tx: 116, ty: 5, reward: "bone" },
   ],
 
   // 3 blessings spread across the whole journey so the full level must be
@@ -113,7 +117,7 @@ export const level01: Level = {
   // Foreground trees stand on open grass: never in a stepping platform's row
   // and never in a "?" block's column, so nothing the player has to land on or
   // bump ever hides behind a canopy.
-  trees: [27, 44, 57, 73, 91, 119],
+  trees: [27, 44, 61, 73, 94, 109],
 
   flowers: [
     2, 4, 7, 11, 13, 18, 21, 26, 28, 34, 38, 44, 49, 51, 55, 58,
@@ -124,7 +128,7 @@ export const level01: Level = {
     { tile: 31, label: "DANMARK\n03.10.2026", bg: 0xc8102e, fg: 0xffffff },
     // "KIRKE" is a word, not a place name, so it is read in the guest's own
     // language — the sign that points the way is no use if it can't be read.
-    { tile: 117, label: "KIRKE\n→", labelKey: "church", bg: 0xffffff, fg: 0xc8102e },
+    { tile: 120, label: "KIRKE\n→", labelKey: "church", bg: 0xffffff, fg: 0xc8102e },
   ],
 
   // Flag poles, cycling Denmark → Brazil → Pernambuco → Straw Hat. The columns

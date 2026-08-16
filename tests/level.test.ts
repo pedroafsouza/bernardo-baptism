@@ -10,10 +10,13 @@ import assert from "node:assert/strict";
 import { level01 } from "@/lib/levels/level01";
 import {
   BLOCK_CLEARANCE,
+  SCENERY_CLEARANCE,
   blockClearances,
+  blockSceneryClearances,
   isGroundColumn,
   landingColumns,
   platformTiles,
+  tallSceneryColumns,
 } from "@/lib/levels/layout";
 
 test("a surprise block is never crowded by a platform you have to land on", () => {
@@ -21,6 +24,26 @@ test("a surprise block is never crowded by a platform you have to land on", () =
     assert.ok(
       clearance >= BLOCK_CLEARANCE,
       `block at tile ${tx} is only ${clearance} tiles from a landing spot`
+    );
+  }
+});
+
+test("a surprise block never lands on a tree, a signpost or a flag", () => {
+  for (const { tx, clearance } of blockSceneryClearances(level01)) {
+    assert.ok(
+      clearance >= SCENERY_CLEARANCE,
+      `block at tile ${tx} is only ${clearance} tiles from tall scenery`
+    );
+  }
+});
+
+test("the tall scenery never stacks on itself either", () => {
+  const columns = tallSceneryColumns(level01);
+  for (let i = 1; i < columns.length; i++) {
+    assert.notEqual(
+      columns[i],
+      columns[i - 1],
+      `two pieces of tall scenery share tile ${columns[i]}`
     );
   }
 });
