@@ -81,6 +81,9 @@ type AdminIdentity = {
   mustChangePassword: boolean;
 };
 
+/** Small caption above a form field, so a bare number always says what it is. */
+const fieldLabel = "text-[11px] uppercase tracking-wide opacity-70";
+
 type Tab = "guests" | "visits" | "audit" | "admins" | "account";
 
 function LangToggle({
@@ -866,150 +869,171 @@ function AdminPageInner() {
             <Icon name={form.id ? "edit" : "addGuest"} />
             {form.id ? t.editGuest : t.addGuest}
           </div>
-          <div className="flex items-stretch gap-1 sm:col-span-1">
+          <div className="flex flex-col gap-1 sm:col-span-1">
+            <label className={fieldLabel} htmlFor="guest-code">
+              {t.colCode}
+            </label>
+            <div className="flex items-stretch gap-1">
+              <input
+                required
+                id="guest-code"
+                value={form.guestCode}
+                onChange={(e) => setForm({ ...form, guestCode: e.target.value })}
+                placeholder="GUEST_XYZ"
+                className="border-4 border-black p-2 text-[14px] w-full min-w-0"
+              />
+              <button
+                type="button"
+                title={t.generateCode}
+                aria-label={t.generateCode}
+                onClick={() =>
+                  setForm((f) => ({
+                    ...f,
+                    guestCode: inviteCodeFromName(
+                      f.name,
+                      guests.filter((x) => x.id !== f.id).map((x) => x.guestCode)
+                    ),
+                  }))
+                }
+                className="pixel-btn border-4 border-black bg-pastel-yellow px-2 shrink-0"
+              >
+                <Icon name="magic" className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+          <label className="flex flex-col gap-1 sm:col-span-2">
+            <span className={fieldLabel}>{t.colName}</span>
             <input
               required
-              value={form.guestCode}
-              onChange={(e) => setForm({ ...form, guestCode: e.target.value })}
-              placeholder="GUEST_XYZ"
-              className="border-4 border-black p-2 text-[14px] w-full min-w-0"
+              value={form.name}
+              onChange={(e) => {
+                const name = e.target.value;
+                setForm((f) => {
+                  const others = guests.map((x) => x.guestCode);
+                  // A new household gets a code proposed as you type, until
+                  // somebody types their own; an existing one keeps the code its
+                  // guests already have in their pocket.
+                  const proposed = !f.guestCode || f.guestCode === inviteCodeFromName(f.name, others);
+                  return {
+                    ...f,
+                    name,
+                    guestCode:
+                      f.id || !proposed ? f.guestCode : inviteCodeFromName(name, others),
+                  };
+                });
+              }}
+              placeholder={t.namePlaceholder}
+              className="border-4 border-black p-2 text-[14px] w-full"
             />
-            <button
-              type="button"
-              title={t.generateCode}
-              aria-label={t.generateCode}
-              onClick={() =>
-                setForm((f) => ({
-                  ...f,
-                  guestCode: inviteCodeFromName(
-                    f.name,
-                    guests.filter((x) => x.id !== f.id).map((x) => x.guestCode)
-                  ),
-                }))
-              }
-              className="pixel-btn border-4 border-black bg-pastel-yellow px-2 shrink-0"
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className={fieldLabel}>{t.colGroup}</span>
+            <select
+              value={form.group}
+              onChange={(e) => setForm({ ...form, group: e.target.value })}
+              className="border-4 border-black p-2 text-[14px] w-full"
             >
-              <Icon name="magic" className="h-4 w-4" />
-            </button>
-          </div>
-          <input
-            required
-            value={form.name}
-            onChange={(e) => {
-              const name = e.target.value;
-              setForm((f) => {
-                const others = guests.map((x) => x.guestCode);
-                // A new household gets a code proposed as you type, until
-                // somebody types their own; an existing one keeps the code its
-                // guests already have in their pocket.
-                const proposed = !f.guestCode || f.guestCode === inviteCodeFromName(f.name, others);
-                return {
-                  ...f,
-                  name,
-                  guestCode:
-                    f.id || !proposed ? f.guestCode : inviteCodeFromName(name, others),
-                };
-              });
-            }}
-            placeholder={t.namePlaceholder}
-            className="border-4 border-black p-2 text-[14px] sm:col-span-2"
-          />
-          <select
-            value={form.group}
-            onChange={(e) => setForm({ ...form, group: e.target.value })}
-            className="border-4 border-black p-2 text-[14px]"
-          >
-            {GROUPS.map((g) => (
-              <option key={g}>{g}</option>
-            ))}
-          </select>
-          <select
-            value={form.status}
-            onChange={(e) => setForm({ ...form, status: e.target.value })}
-            className="border-4 border-black p-2 text-[14px]"
-          >
-            {STATUSES.map((s) => (
-              <option key={s}>{s}</option>
-            ))}
-          </select>
-          <input
-            type="number"
-            min={1}
-            max={10}
-            value={form.maxGuests}
-            onChange={(e) => {
-              const maxGuests = Number(e.target.value);
-              setForm({
-                ...form,
-                maxGuests,
-                guestCount: Math.min(form.guestCount, Math.max(maxGuests, 0)),
-                churchCount: Math.min(form.churchCount, Math.max(maxGuests, 0)),
-              });
-            }}
-            title={t.maxAdults}
-            placeholder={t.maxAdults}
-            className="border-4 border-black p-2 text-[14px]"
-          />
-          <input
-            type="number"
-            min={0}
-            max={10}
-            value={form.maxKids}
-            onChange={(e) => {
-              const maxKids = Number(e.target.value);
-              setForm({
-                ...form,
-                maxKids,
-                kids: Math.min(form.kids, Math.max(maxKids, 0)),
-                churchKids: Math.min(form.churchKids, Math.max(maxKids, 0)),
-              });
-            }}
-            title={t.maxKids}
-            placeholder={t.maxKids}
-            className="border-4 border-black p-2 text-[14px]"
-          />
-          <input
-            type="number"
-            min={0}
-            max={form.maxGuests}
-            value={form.churchCount}
-            onChange={(e) => setForm({ ...form, churchCount: Number(e.target.value) })}
-            title={t.churchAdults}
-            placeholder={t.churchAdults}
-            className="border-4 border-black p-2 text-[14px]"
-          />
-          <input
-            type="number"
-            min={0}
-            max={form.maxKids}
-            value={form.churchKids}
-            onChange={(e) => setForm({ ...form, churchKids: Number(e.target.value) })}
-            title={t.churchKids}
-            placeholder={t.churchKids}
-            disabled={form.maxKids === 0}
-            className="border-4 border-black p-2 text-[14px] disabled:opacity-50"
-          />
-          <input
-            type="number"
-            min={0}
-            max={form.maxGuests}
-            value={form.guestCount}
-            onChange={(e) => setForm({ ...form, guestCount: Number(e.target.value) })}
-            title={t.adults}
-            placeholder={t.adults}
-            className="border-4 border-black p-2 text-[14px]"
-          />
-          <input
-            type="number"
-            min={0}
-            max={form.maxKids}
-            value={form.kids}
-            onChange={(e) => setForm({ ...form, kids: Number(e.target.value) })}
-            title={t.kids}
-            placeholder={t.kids}
-            disabled={form.maxKids === 0}
-            className="border-4 border-black p-2 text-[14px] disabled:opacity-50"
-          />
+              {GROUPS.map((g) => (
+                <option key={g}>{g}</option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className={fieldLabel}>{t.colStatus}</span>
+            <select
+              value={form.status}
+              onChange={(e) => setForm({ ...form, status: e.target.value })}
+              className="border-4 border-black p-2 text-[14px] w-full"
+            >
+              {STATUSES.map((s) => (
+                <option key={s}>{s}</option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className={fieldLabel}>{t.maxAdults}</span>
+            <input
+              type="number"
+              min={1}
+              max={10}
+              value={form.maxGuests}
+              onChange={(e) => {
+                const maxGuests = Number(e.target.value);
+                setForm({
+                  ...form,
+                  maxGuests,
+                  guestCount: Math.min(form.guestCount, Math.max(maxGuests, 0)),
+                  churchCount: Math.min(form.churchCount, Math.max(maxGuests, 0)),
+                });
+              }}
+              className="border-4 border-black p-2 text-[14px] w-full"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className={fieldLabel}>{t.maxKids}</span>
+            <input
+              type="number"
+              min={0}
+              max={10}
+              value={form.maxKids}
+              onChange={(e) => {
+                const maxKids = Number(e.target.value);
+                setForm({
+                  ...form,
+                  maxKids,
+                  kids: Math.min(form.kids, Math.max(maxKids, 0)),
+                  churchKids: Math.min(form.churchKids, Math.max(maxKids, 0)),
+                });
+              }}
+              className="border-4 border-black p-2 text-[14px] w-full"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className={fieldLabel}>{t.churchAdults}</span>
+            <input
+              type="number"
+              min={0}
+              max={form.maxGuests}
+              value={form.churchCount}
+              onChange={(e) => setForm({ ...form, churchCount: Number(e.target.value) })}
+              className="border-4 border-black p-2 text-[14px] w-full"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className={fieldLabel}>{t.churchKids}</span>
+            <input
+              type="number"
+              min={0}
+              max={form.maxKids}
+              value={form.churchKids}
+              onChange={(e) => setForm({ ...form, churchKids: Number(e.target.value) })}
+              disabled={form.maxKids === 0}
+              className="border-4 border-black p-2 text-[14px] w-full disabled:opacity-50"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className={fieldLabel}>{t.adults}</span>
+            <input
+              type="number"
+              min={0}
+              max={form.maxGuests}
+              value={form.guestCount}
+              onChange={(e) => setForm({ ...form, guestCount: Number(e.target.value) })}
+              className="border-4 border-black p-2 text-[14px] w-full"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className={fieldLabel}>{t.kids}</span>
+            <input
+              type="number"
+              min={0}
+              max={form.maxKids}
+              value={form.kids}
+              onChange={(e) => setForm({ ...form, kids: Number(e.target.value) })}
+              disabled={form.maxKids === 0}
+              className="border-4 border-black p-2 text-[14px] w-full disabled:opacity-50"
+            />
+          </label>
           <label className="sm:col-span-3 flex items-center gap-2 text-[14px]">
             <input
               type="checkbox"
