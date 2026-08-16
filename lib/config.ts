@@ -19,6 +19,13 @@ export const EVENT = {
   receptionTimeEn: "Straight after the ceremony",
   receptionTimePt: "Logo após a cerimônia",
   receptionPlace: "Little House Amager, Lindgreens Allé 1, 2300 København",
+  /// The kitchen and the seating are ordered from the replies, so there is a
+  /// day after which an answer is too late to plan around.
+  rsvpDeadline: "20. september 2026",
+  rsvpDeadlineEn: "20 September 2026",
+  rsvpDeadlinePt: "20 de setembro de 2026",
+  /// A wish list, never an expectation — giving anything at all is optional.
+  giftList: "https://onskeskyen.dk/s/etg4pd",
 };
 
 export type GuestStatus = "PENDING" | "ATTENDING" | "DECLINED";

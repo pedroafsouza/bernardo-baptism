@@ -20,6 +20,16 @@ const CEREMONY: Record<MessageLang, string> = {
   pt: "Sábado, 3 de outubro de 2026, às 11:00",
 };
 
+/**
+ * The reply deadline belongs in the invitation itself: the kitchen and the
+ * seating are ordered from the answers, so it is never only in the app.
+ */
+const DEADLINE: Record<MessageLang, string> = {
+  da: EVENT.rsvpDeadline,
+  en: EVENT.rsvpDeadlineEn,
+  pt: EVENT.rsvpDeadlinePt,
+};
+
 const RECEPTION: Record<MessageLang, string> = {
   da: EVENT.receptionTime,
   en: EVENT.receptionTimeEn,
@@ -41,6 +51,7 @@ export function buildInviteMessage(opts: {
   const { name, link, lang, channel } = opts;
   const ceremony = CEREMONY[lang];
   const reception = RECEPTION[lang];
+  const deadline = DEADLINE[lang];
 
   if (lang === "da") {
     const subject = `Invitation til Bernardos barnedåb — ${EVENT.ceremonyTime}`;
@@ -57,6 +68,8 @@ Fest bagefter: ${EVENT.receptionPlace}
 Vi har lavet et lille spil som invitation — klik jer ind, hjælp Bernardo hen til kirken og svar til sidst:
 ${link}
 
+Svar venligst senest den ${deadline}.
+
 Kærlig hilsen
 ${EVENT.mother} & ${EVENT.father}`
         : `Kære ${name}
@@ -72,6 +85,8 @@ Sted: ${EVENT.receptionPlace}
 I stedet for et almindeligt svarkort har vi lavet et lille spil. Følg jeres personlige link, hjælp Bernardo med at nå frem til kirken, og giv os besked om I kommer:
 
 ${link}
+
+Svar venligst senest den ${deadline}.
 
 Vi glæder os til at se jer.
 
@@ -95,6 +110,8 @@ Festa depois: ${EVENT.receptionPlace}
 Fizemos um joguinho como convite — entra, ajuda o Bernardo a chegar na igreja e confirma no final:
 ${link}
 
+Confirme até ${deadline}, por favor.
+
 Com carinho,
 ${EVENT.mother} & ${EVENT.father}`
         : `Querido(a) ${name},
@@ -110,6 +127,8 @@ Local: ${EVENT.receptionPlace}
 Em vez de um convite comum, criamos um pequeno jogo. Acesse seu link pessoal, ajude o Bernardo a chegar à igreja e confirme sua presença no final:
 
 ${link}
+
+Confirme até ${deadline}, por favor.
 
 Esperamos você!
 
@@ -132,6 +151,8 @@ Party afterwards: ${EVENT.receptionPlace}
 We made a little game as the invitation — jump in, help Bernardo reach the church, and RSVP at the end:
 ${link}
 
+Please reply by ${deadline}.
+
 Love,
 ${EVENT.mother} & ${EVENT.father}`
       : `Dear ${name},
@@ -147,6 +168,8 @@ Where: ${EVENT.receptionPlace}
 Instead of a normal RSVP card we built a little game. Follow your personal link, help Bernardo reach the church, and let us know if you can come:
 
 ${link}
+
+Please reply by ${deadline}.
 
 We hope to see you there.
 

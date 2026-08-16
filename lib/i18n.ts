@@ -105,6 +105,12 @@ type Dict = {
   receptionHint: string;
   nobodyComing: string;
   comingCount: (adults: number, kids: number) => string;
+  /** The day the kitchen and the seating are ordered from. */
+  replyBy: (date: string) => string;
+  /** A wish list, never an expectation. */
+  giftListTitle: string;
+  giftListHint: string;
+  giftListOpen: string;
   comingYes: string;
   comingNo: string;
   allergiesTitle: string;
@@ -235,6 +241,11 @@ const da: Dict = {
   churchHint: "Hvem kommer med til selve dåben?",
   receptionHint: "Og hvem bliver med til festen bagefter?",
   nobodyComing: "Ingen fra denne invitation",
+  replyBy: (date) => `Svar venligst senest den ${date}.`,
+  giftListTitle: "Ønskeliste",
+  giftListHint:
+    "Helt frivilligt — det vigtigste er, at I er der. Men spørger nogen, ligger ønskelisten her.",
+  giftListOpen: "Åbn ønskelisten",
   comingCount: (adults, kids) =>
     kids > 0
       ? `${adults} ${adults === 1 ? "voksen" : "voksne"} og ${kids} ${kids === 1 ? "barn" : "børn"}`
@@ -370,6 +381,11 @@ const en: Dict = {
   churchHint: "Who is coming to the christening itself?",
   receptionHint: "And who is staying for the party afterwards?",
   nobodyComing: "Nobody from this invitation",
+  replyBy: (date) => `Please reply by ${date}.`,
+  giftListTitle: "Wish list",
+  giftListHint:
+    "Entirely optional — having you there is the gift. But if you were wondering, the wish list lives here.",
+  giftListOpen: "Open the wish list",
   comingCount: (adults, kids) =>
     kids > 0
       ? `${adults} adult${adults === 1 ? "" : "s"} and ${kids} child${kids === 1 ? "" : "ren"}`
@@ -505,6 +521,11 @@ const pt: Dict = {
   churchHint: "Quem vem ao batizado?",
   receptionHint: "E quem fica para a festa depois?",
   nobodyComing: "Ninguém deste convite",
+  replyBy: (date) => `Confirme até ${date}, por favor.`,
+  giftListTitle: "Lista de presentes",
+  giftListHint:
+    "Totalmente opcional — o presente é você estar lá. Mas, se ficou na dúvida, a lista está aqui.",
+  giftListOpen: "Abrir a lista de presentes",
   comingCount: (adults, kids) =>
     kids > 0
       ? `${adults} adulto${adults === 1 ? "" : "s"} e ${kids} criança${kids === 1 ? "" : "s"}`

@@ -55,6 +55,9 @@ import {
   SquareCheck,
   Send,
   PersonStanding,
+  Gift,
+  CalendarClock,
+  ExternalLink,
   type LucideIcon,
 } from "lucide-react";
 
@@ -108,6 +111,9 @@ export const ICONS = {
   sent: Send,
   child: PersonStanding,
   dot: Circle,
+  gift: Gift,
+  deadline: CalendarClock,
+  external: ExternalLink,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

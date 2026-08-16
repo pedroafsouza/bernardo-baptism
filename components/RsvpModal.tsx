@@ -187,6 +187,12 @@ export default function RsvpModal({
       : lang === "pt"
         ? EVENT.receptionTimePt
         : EVENT.receptionTime;
+  const deadline =
+    lang === "en"
+      ? EVENT.rsvpDeadlineEn
+      : lang === "pt"
+        ? EVENT.rsvpDeadlinePt
+        : EVENT.rsvpDeadline;
 
   function answer(position: number, part: Part, coming: boolean) {
     setError(null);
@@ -453,6 +459,12 @@ export default function RsvpModal({
                     </span>
                   </p>
                 </div>
+                {/* The kitchen is ordered from the replies, so the date is part
+                    of the invitation rather than fine print. */}
+                <p className="flex items-start gap-2 text-[13px] leading-relaxed text-pastel-plum">
+                  <Icon name="deadline" className="mt-0.5 h-4 w-4 shrink-0" />
+                  {t.replyBy(deadline)}
+                </p>
               </section>
             )}
 
@@ -661,6 +673,25 @@ export default function RsvpModal({
                     </div>
                   );
                 })}
+              </div>
+            )}
+            {/* Optional, and only for the people who are actually coming. */}
+            {result === "ATTENDING" && (
+              <div className="mt-5 border-4 border-black bg-white p-4 text-left text-[13px] leading-relaxed">
+                <p className="flex items-center gap-2">
+                  <Icon name="gift" className="h-4 w-4 shrink-0 text-pastel-plum" />
+                  <span>{t.giftListTitle}</span>
+                </p>
+                <p className="mt-2 opacity-75">{t.giftListHint}</p>
+                <a
+                  href={EVENT.giftList}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="pixel-btn mt-3 inline-flex items-center gap-2 border-2 border-black bg-pastel-blue px-3 py-2"
+                >
+                  <Icon name="external" className="h-4 w-4 shrink-0" />
+                  {t.giftListOpen}
+                </a>
               </div>
             )}
             {demo && (
