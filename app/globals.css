@@ -96,6 +96,9 @@ select,
   width: 100vw;
   overflow: hidden;
   touch-action: none;
+  /* matches the top of the in-game sky so the cream page background can never
+     show through as a band above the canvas */
+  background: #8fccff;
 }
 
 /* Oscar's sitting idle: he mostly sits still, then wags / yaps for a beat.

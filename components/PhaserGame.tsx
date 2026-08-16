@@ -95,6 +95,7 @@ export default function PhaserGame({
   useEffect(() => {
     let destroyed = false;
     let game: any;
+    let resizeObs: ResizeObserver | undefined;
 
     (async () => {
       const Phaser = (await import("phaser")).default;
@@ -151,10 +152,25 @@ export default function PhaserGame({
       });
 
       gameRef.current = game;
+
+      // `Phaser.Scale.RESIZE` only re-measures on window resize events, but this
+      // canvas is sized by `100dvh` — a mobile toolbar sliding away, a panel
+      // resize or a font-driven reflow can change the container without one.
+      // The stale canvas left a band of page background above the sky, so the
+      // container is observed directly.
+      if (typeof ResizeObserver !== "undefined" && containerRef.current) {
+        const ro = new ResizeObserver(([entry]) => {
+          const { width, height } = entry.contentRect;
+          if (width > 0 && height > 0) game.scale.resize(width, height);
+        });
+        ro.observe(containerRef.current);
+        resizeObs = ro;
+      }
     })();
 
     return () => {
       destroyed = true;
+      resizeObs?.disconnect();
       if (game) game.destroy(true);
       if (gameRef.current) {
         gameRef.current.destroy(true);

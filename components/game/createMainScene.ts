@@ -18,6 +18,15 @@ import {
   type Control,
 } from "@/lib/gameConstants";
 import { generateTextures } from "@/components/game/textures";
+import {
+  SKY_ATLAS,
+  SKY_TOP,
+  addBirds,
+  addClouds,
+  addSkyBackdrop,
+  addSun,
+  createSkyAnims,
+} from "@/components/game/sky";
 import { LEVELS, DEFAULT_LEVEL_ID } from "@/lib/levels/level01";
 import { boneDay, dailyBones } from "@/lib/dailyBones";
 import type { Level } from "@/lib/levels/types";
@@ -157,6 +166,8 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
           });
           this.load.image("church_pixel", "/assets/game/church_pixel.png");
           this.load.image("hospital", "/assets/game/hospital.png");
+          // Sun + birds: every frame of both in one 420×108 atlas.
+          this.load.atlas(SKY_ATLAS, "/assets/game/sky.png", "/assets/game/sky.json");
         }
 
         // ---- generated background + fx textures ----
@@ -659,16 +670,15 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
 
         create() {
           this.makeBackdrop();
+          createSkyAnims(this);
 
           // ---- parallax background ----
-          this.add
-            .image(0, 0, "sky")
-            .setOrigin(0, 0)
-            .setDisplaySize(WORLD_W, WORLD_H)
-            .setDepth(-41)
-            .setScrollFactor(0);
+          // The gradient is a world-space sprite that overscans the level on
+          // every side, so no viewport shape can ever reveal a bare strip above
+          // the clouds.
+          addSkyBackdrop(this);
 
-          this.add.image(120, 90, "sun").setDepth(-35).setScrollFactor(0.1);
+          addSun(this, Phaser);
 
           // distant mountains tiled across the whole world
           for (let x = 250; x < WORLD_W; x += 680) {
@@ -687,25 +697,7 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
               .setScale(0.9);
           }
 
-          const nClouds = Math.ceil(WORLD_W / 300) + 2;
-          for (let i = 0; i < nClouds; i++) {
-            const cx = 150 + i * 300 + Phaser.Math.Between(-60, 60);
-            const cy = 40 + Phaser.Math.Between(0, 90);
-            const cloud = this.add
-              .image(cx, cy, "cloud")
-              .setDepth(-30)
-              .setScrollFactor(0.18 + (i % 3) * 0.06, 1)
-              .setAlpha(0.82 + (i % 2) * 0.12)
-              .setScale(Phaser.Math.FloatBetween(0.55, 1.18));
-            this.tweens.add({
-              targets: cloud,
-              x: cloud.x + 40,
-              yoyo: true,
-              repeat: -1,
-              duration: Phaser.Math.Between(6000, 10000),
-              ease: "Sine.inOut",
-            });
-          }
+          addClouds(this, Phaser);
 
           // hill bands: vertical scroll locked to the world (scrollFactorY = 1) and
           // anchored to the ground line so they always meet the terrain (no sky gap).
@@ -755,24 +747,8 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
               .setAlpha(0.85);
           }
 
-          // drifting birds
-          const nBirds = Math.ceil(WORLD_W / 520) + 2;
-          for (let i = 0; i < nBirds; i++) {
-            const bird = this.add
-              .image(200 + i * 260, 60 + Phaser.Math.Between(0, 70), "bird")
-              .setDepth(-28)
-              .setScrollFactor(0.2, 1)
-              .setScale(Phaser.Math.FloatBetween(0.7, 1.1));
-            this.tweens.add({
-              targets: bird,
-              x: bird.x + Phaser.Math.Between(40, 90),
-              y: bird.y - Phaser.Math.Between(6, 16),
-              yoyo: true,
-              repeat: -1,
-              duration: Phaser.Math.Between(4000, 7000),
-              ease: "Sine.inOut",
-            });
-          }
+          // drifting birds — flocks, lone gliders and a few perched
+          addBirds(this, Phaser);
 
           // ---- level geometry (data-driven) ----
           this.solids = this.physics.add.staticGroup();
@@ -921,10 +897,14 @@ export function createMainScene(Phaser: any, deps: SceneDeps) {
           this.physics.world.setBounds(0, 0, WORLD_W, WORLD_H);
           this.cameras.main.setBounds(0, 0, WORLD_W, WORLD_H);
           this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
-          this.cameras.main.setBackgroundColor("#bfe3ff");
+          this.cameras.main.setBackgroundColor(SKY_TOP);
 
+          // The zoom must follow the *camera's* height. Reading the cached game
+          // size instead used to leave a stale zoom (and a visible band of page
+          // background above the sky) whenever the canvas resized without the
+          // scale manager's size having caught up yet.
           const applyZoom = () => {
-            const h = this.scale.gameSize.height || DESIGN_H;
+            const h = this.cameras.main.height || this.scale.gameSize.height || DESIGN_H;
             this.cameras.main.setZoom(Math.max(h / DESIGN_H, 0.35));
           };
           applyZoom();

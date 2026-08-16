@@ -3,22 +3,32 @@
 // baked texture the level uses (sky, clouds, hills, crosses, coins, ball,
 // flames, flags, particles, etc). Purely a function of the scene + Phaser.
 import { WORLD_H } from "@/lib/gameConstants";
+import { SKY_BOTTOM, SKY_OVERSCAN_Y, SKY_TOP } from "@/components/game/sky";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function generateTextures(scene: any, Phaser: any) {
   const g = scene.make.graphics({ x: 0, y: 0 }, false);
 
-  // sky gradient (baked as strips — generateTexture ignores fillGradientStyle)
+  // Sky gradient (baked as strips — generateTexture ignores fillGradientStyle).
+  // The strip is taller than the world: the gradient itself still spans exactly
+  // the world box, with the top and bottom colours continuing past it, so the
+  // backdrop can be drawn 1:1 well outside the level and never leave a gap at
+  // the top of tall viewports.
   g.clear();
-  const top = Phaser.Display.Color.ValueToColor(0x8fccff);
-  const bot = Phaser.Display.Color.ValueToColor(0xfdf1e7);
+  const top = Phaser.Display.Color.ValueToColor(SKY_TOP);
+  const bot = Phaser.Display.Color.ValueToColor(SKY_BOTTOM);
+  const skyH = WORLD_H + SKY_OVERSCAN_Y * 2;
+  g.fillStyle(SKY_TOP, 1);
+  g.fillRect(0, 0, 64, SKY_OVERSCAN_Y + 1);
+  g.fillStyle(SKY_BOTTOM, 1);
+  g.fillRect(0, SKY_OVERSCAN_Y + WORLD_H, 64, SKY_OVERSCAN_Y);
   const steps = 48;
   for (let i = 0; i < steps; i++) {
     const c = Phaser.Display.Color.Interpolate.ColorWithColor(top, bot, steps - 1, i);
     g.fillStyle(Phaser.Display.Color.GetColor(c.r, c.g, c.b), 1);
-    g.fillRect(0, Math.floor((i * WORLD_H) / steps), 64, Math.ceil(WORLD_H / steps) + 1);
+    g.fillRect(0, SKY_OVERSCAN_Y + Math.floor((i * WORLD_H) / steps), 64, Math.ceil(WORLD_H / steps) + 1);
   }
-  g.generateTexture("sky", 64, WORLD_H);
+  g.generateTexture("sky", 64, skyH);
 
   // fluffy layered cloud
   g.clear();
@@ -122,14 +132,6 @@ export function generateTextures(scene: any, Phaser: any) {
   g.fillEllipse(136, 108, 92, 34);
   g.generateTexture("hill", 380, 220);
 
-  // sun
-  g.clear();
-  g.fillStyle(0xfff2b0, 0.9);
-  g.fillCircle(60, 60, 46);
-  g.fillStyle(0xffe27a, 1);
-  g.fillCircle(60, 60, 34);
-  g.generateTexture("sun", 120, 120);
-
   // golden cross (the Blessing)
   g.clear();
   g.fillStyle(0xffd34d, 1);
@@ -199,13 +201,6 @@ export function generateTextures(scene: any, Phaser: any) {
   g.fillStyle(0xffd85a, 1);
   g.fillCircle(12, 8, 3.4);
   g.generateTexture("flower", 24, 24);
-
-  // little bird
-  g.clear();
-  g.fillStyle(0x6a7a88, 1);
-  g.fillTriangle(0, 10, 12, 2, 12, 8);
-  g.fillTriangle(24, 10, 12, 2, 12, 8);
-  g.generateTexture("bird", 24, 12);
 
   // World Cup football — classic black-and-white soccer ball (Telstar)
   g.clear();
