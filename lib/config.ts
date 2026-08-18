@@ -6,30 +6,50 @@
  * a strong password of its own.
  */
 
-export const EVENT = {
-  /// The name the family shares, so the parents can sign an invitation with
-  /// it once — "Birgitte og Pedro Augusto Freitas de Souza" — instead of twice.
-  familyName: "Freitas de Souza",
-  child: "Bernardo Freitas de Souza",
-  birthday: "16.06.2026",
-  mother: "Birgitte Freitas de Souza",
-  father: "Pedro Augusto Freitas de Souza",
-  ceremonyTime: "Lørdag den 3. oktober 2026 kl. 11:00",
-  ceremonyTimeEn: "Saturday 3 October 2026 at 11:00",
-  ceremonyTimePt: "Sábado, 3 de outubro de 2026, às 11:00",
-  ceremonyPlace: "Filips Kirke, Kastrupvej 55, 2300 København",
-  receptionTime: "Efterfølgende",
-  receptionTimeEn: "Straight after the ceremony",
-  receptionTimePt: "Logo após a cerimônia",
-  receptionPlace: "Little House Amager, Lindgreens Allé 1, 2300 København",
-  /// The kitchen and the seating are ordered from the replies, so there is a
-  /// day after which an answer is too late to plan around.
-  rsvpDeadline: "20. september 2026",
-  rsvpDeadlineEn: "20 September 2026",
-  rsvpDeadlinePt: "20 de setembro de 2026",
-  /// A wish list, never an expectation — giving anything at all is optional.
-  giftList: "https://onskeskyen.dk/s/etg4pd",
+import { FICTIONAL_EVENT, type EventDetails } from "@/lib/eventDetails";
+
+/**
+ * The real names, hours and addresses are never committed: they are handed to
+ * the build as `NEXT_PUBLIC_EVENT_*` variables by the deployment pipeline (see
+ * `.env.example`). A missing or blank variable falls back to the fictional
+ * christening, so a fresh checkout runs and the site can never invent a wrong
+ * address of its own.
+ *
+ * Each variable is read as a literal `process.env.X`, which is what lets Next
+ * substitute it into the browser bundle — the invitation is shown client-side.
+ */
+const set = (value: string | undefined, fallback: string) => value?.trim() || fallback;
+
+export const EVENT: EventDetails = {
+  familyName: set(process.env.NEXT_PUBLIC_EVENT_FAMILY_NAME, FICTIONAL_EVENT.familyName),
+  child: set(process.env.NEXT_PUBLIC_EVENT_CHILD, FICTIONAL_EVENT.child),
+  birthday: set(process.env.NEXT_PUBLIC_EVENT_BIRTHDAY, FICTIONAL_EVENT.birthday),
+  mother: set(process.env.NEXT_PUBLIC_EVENT_MOTHER, FICTIONAL_EVENT.mother),
+  father: set(process.env.NEXT_PUBLIC_EVENT_FATHER, FICTIONAL_EVENT.father),
+  ceremonyTime: set(process.env.NEXT_PUBLIC_EVENT_CEREMONY_TIME_DA, FICTIONAL_EVENT.ceremonyTime),
+  ceremonyTimeEn: set(process.env.NEXT_PUBLIC_EVENT_CEREMONY_TIME_EN, FICTIONAL_EVENT.ceremonyTimeEn),
+  ceremonyTimePt: set(process.env.NEXT_PUBLIC_EVENT_CEREMONY_TIME_PT, FICTIONAL_EVENT.ceremonyTimePt),
+  ceremonyPlace: set(process.env.NEXT_PUBLIC_EVENT_CEREMONY_PLACE, FICTIONAL_EVENT.ceremonyPlace),
+  receptionTime: set(process.env.NEXT_PUBLIC_EVENT_RECEPTION_TIME_DA, FICTIONAL_EVENT.receptionTime),
+  receptionTimeEn: set(process.env.NEXT_PUBLIC_EVENT_RECEPTION_TIME_EN, FICTIONAL_EVENT.receptionTimeEn),
+  receptionTimePt: set(process.env.NEXT_PUBLIC_EVENT_RECEPTION_TIME_PT, FICTIONAL_EVENT.receptionTimePt),
+  receptionPlace: set(process.env.NEXT_PUBLIC_EVENT_RECEPTION_PLACE, FICTIONAL_EVENT.receptionPlace),
+  rsvpDeadline: set(process.env.NEXT_PUBLIC_EVENT_RSVP_DEADLINE_DA, FICTIONAL_EVENT.rsvpDeadline),
+  rsvpDeadlineEn: set(process.env.NEXT_PUBLIC_EVENT_RSVP_DEADLINE_EN, FICTIONAL_EVENT.rsvpDeadlineEn),
+  rsvpDeadlinePt: set(process.env.NEXT_PUBLIC_EVENT_RSVP_DEADLINE_PT, FICTIONAL_EVENT.rsvpDeadlinePt),
+  giftList: set(process.env.NEXT_PUBLIC_EVENT_GIFT_LIST, FICTIONAL_EVENT.giftList),
 };
+
+/**
+ * Which christening a visitor is being shown.
+ *
+ * The demo link is public — it is pasted into a README, a chat, a browser
+ * address bar by anyone — so it is answered with the fictional event. A real
+ * guest, holding a real code, sees the real one.
+ */
+export function eventFor(demo?: boolean): EventDetails {
+  return demo ? FICTIONAL_EVENT : EVENT;
+}
 
 export type GuestStatus = "PENDING" | "ATTENDING" | "DECLINED";
 export const GROUPS = ["Family", "Friends", "Godparents", "Colleagues", "Other"];

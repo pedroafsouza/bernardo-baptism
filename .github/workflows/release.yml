@@ -78,12 +78,21 @@ jobs:
           USER: ${{ secrets.DEPLOY_USER }}
           REF: ${{ github.sha }}
           SEED_MODE: ${{ inputs.seed_mode || 'if-missing' }}
+          # The invitation — child, parents, hours, addresses — as a dotenv
+          # block of NEXT_PUBLIC_EVENT_* lines. It is a secret rather than a
+          # file in the repository, and base64 keeps quotes, accents and line
+          # breaks intact on their way through ssh.
+          EVENT_ENV: ${{ secrets.EVENT_ENV }}
         run: |
+          if [ -z "$EVENT_ENV" ]; then
+            echo "::warning::EVENT_ENV is not set — the site will deploy with the fictional christening"
+          fi
+          EVENT_ENV_B64="$(printf '%s\n' "$EVENT_ENV" | base64 | tr -d '\n')"
           # Pipe the script from this checkout rather than running the copy on
           # the server: the deploy logic then always matches the commit being
           # deployed, and a first deploy works before the server has the file.
           ssh -o BatchMode=yes "$USER@$HOST" \
-            "SEED_MODE='$SEED_MODE' DEPLOY_REF='$REF' bash -s" < scripts/deploy.sh
+            "SEED_MODE='$SEED_MODE' DEPLOY_REF='$REF' EVENT_ENV_B64='$EVENT_ENV_B64' bash -s" < scripts/deploy.sh
 
       - name: Verify the public site
         env:

@@ -18,7 +18,7 @@ export const MESSAGE_CHANNELS: { id: MessageChannel; label: string }[] = [
 const CEREMONY: Record<MessageLang, string> = {
   da: EVENT.ceremonyTime,
   en: EVENT.ceremonyTimeEn,
-  pt: "Sábado, 3 de outubro de 2026, às 11:00",
+  pt: EVENT.ceremonyTimePt,
 };
 
 /**
@@ -34,15 +34,15 @@ const DEADLINE: Record<MessageLang, string> = {
 const RECEPTION: Record<MessageLang, string> = {
   da: EVENT.receptionTime,
   en: EVENT.receptionTimeEn,
-  pt: "Logo após a cerimônia",
+  pt: EVENT.receptionTimePt,
 };
 
 /**
  * How the parents sign the invitation: the way they would say it out loud, with
  * the family name once at the end and the joining word of the language the
- * guest is reading — "Birgitte og Pedro Augusto Freitas de Souza", "Birgitte
- * and Pedro Augusto Freitas de Souza", "Birgitte e Pedro Augusto Freitas de
- * Souza". A parent who does not carry the family name keeps their own in full.
+ * guest is reading — "Anna og Jonas Eksempel", "Anna and Jonas Eksempel",
+ * "Anna e Jonas Eksempel". A parent who does not carry the family name keeps
+ * their own in full.
  */
 export function inviteSignature(lang: MessageLang): string {
   const shorten = (full: string) => full.replace(` ${EVENT.familyName}`, "").trim() || full;
@@ -88,7 +88,7 @@ Kærlig hilsen
 ${signature}`
         : `Kære ${name}
 
-Den 16. juni 2026 kom Bernardo til verden, og nu skal han døbes. Det vil glæde os meget, hvis I vil fejre dagen sammen med os.
+Den ${EVENT.birthday} kom Bernardo til verden, og nu skal han døbes. Det vil glæde os meget, hvis I vil fejre dagen sammen med os.
 
 Ceremoni: ${ceremony}
 Sted: ${EVENT.ceremonyPlace}
@@ -130,7 +130,7 @@ Com carinho,
 ${signature}`
         : `Querido(a) ${name},
 
-No dia 16 de junho de 2026 o Bernardo chegou ao mundo, e agora vamos batizá-lo. Ficaríamos muito felizes em celebrar esse dia com você.
+No dia ${EVENT.birthday} o Bernardo chegou ao mundo, e agora vamos batizá-lo. Ficaríamos muito felizes em celebrar esse dia com você.
 
 Cerimônia: ${ceremony}
 Local: ${EVENT.ceremonyPlace}
@@ -171,7 +171,7 @@ Love,
 ${signature}`
       : `Dear ${name},
 
-On 16 June 2026 Bernardo came into the world, and now he is going to be christened. It would mean a lot to us if you could celebrate the day with us.
+On ${EVENT.birthday} Bernardo came into the world, and now he is going to be christened. It would mean a lot to us if you could celebrate the day with us.
 
 Ceremony: ${ceremony}
 Where: ${EVENT.ceremonyPlace}

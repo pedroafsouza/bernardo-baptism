@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { EVENT } from "@/lib/config";
+import { eventFor } from "@/lib/config";
 import { OscarSays } from "@/components/Oscar";
 import Icon from "@/components/Icon";
 import Leaderboard from "@/components/Leaderboard";
@@ -175,24 +175,28 @@ export default function RsvpModal({
     [people, churchKids, kids]
   );
 
+  // The demo link is public, so it is answered with a christening that does not
+  // exist: same screens, same steps, invented family, invented address.
+  const event = eventFor(demo);
+
   const ceremonyTime =
     lang === "en"
-      ? EVENT.ceremonyTimeEn
+      ? event.ceremonyTimeEn
       : lang === "pt"
-        ? EVENT.ceremonyTimePt
-        : EVENT.ceremonyTime;
+        ? event.ceremonyTimePt
+        : event.ceremonyTime;
   const receptionTime =
     lang === "en"
-      ? EVENT.receptionTimeEn
+      ? event.receptionTimeEn
       : lang === "pt"
-        ? EVENT.receptionTimePt
-        : EVENT.receptionTime;
+        ? event.receptionTimePt
+        : event.receptionTime;
   const deadline =
     lang === "en"
-      ? EVENT.rsvpDeadlineEn
+      ? event.rsvpDeadlineEn
       : lang === "pt"
-        ? EVENT.rsvpDeadlinePt
-        : EVENT.rsvpDeadline;
+        ? event.rsvpDeadlinePt
+        : event.rsvpDeadline;
 
   function answer(position: number, part: Part, coming: boolean) {
     setError(null);
@@ -420,25 +424,25 @@ export default function RsvpModal({
                   <p className="flex items-start gap-2">
                     <Icon name="baby" className="mt-0.5 h-4 w-4 shrink-0 text-pastel-plum" />
                     <span>
-                      <span className="text-pastel-plum">{t.child}:</span> {EVENT.child}
+                      <span className="text-pastel-plum">{t.child}:</span> {event.child}
                     </span>
                   </p>
                   <p className="flex items-start gap-2">
                     <Icon name="cake" className="mt-0.5 h-4 w-4 shrink-0 text-pastel-plum" />
                     <span>
-                      <span className="text-pastel-plum">{t.birthday}:</span> {EVENT.birthday}
+                      <span className="text-pastel-plum">{t.birthday}:</span> {event.birthday}
                     </span>
                   </p>
                   <p className="flex items-start gap-2">
                     <Icon name="mother" className="mt-0.5 h-4 w-4 shrink-0 text-pastel-plum" />
                     <span>
-                      <span className="text-pastel-plum">{t.mother}:</span> {EVENT.mother}
+                      <span className="text-pastel-plum">{t.mother}:</span> {event.mother}
                     </span>
                   </p>
                   <p className="flex items-start gap-2">
                     <Icon name="father" className="mt-0.5 h-4 w-4 shrink-0 text-pastel-plum" />
                     <span>
-                      <span className="text-pastel-plum">{t.father}:</span> {EVENT.father}
+                      <span className="text-pastel-plum">{t.father}:</span> {event.father}
                     </span>
                   </p>
                   <hr className="border-black/20 !my-4" />
@@ -447,7 +451,7 @@ export default function RsvpModal({
                     <span>
                       <span className="text-pastel-plum">{t.ceremony}:</span> {ceremonyTime}
                       <br />
-                      <span className="opacity-70">{EVENT.ceremonyPlace}</span>
+                      <span className="opacity-70">{event.ceremonyPlace}</span>
                     </span>
                   </p>
                   <p className="flex items-start gap-2">
@@ -455,7 +459,7 @@ export default function RsvpModal({
                     <span>
                       <span className="text-pastel-plum">{t.reception}:</span> {receptionTime}
                       <br />
-                      <span className="opacity-70">{EVENT.receptionPlace}</span>
+                      <span className="opacity-70">{event.receptionPlace}</span>
                     </span>
                   </p>
                 </div>
@@ -484,7 +488,7 @@ export default function RsvpModal({
                   <p className="text-[12px] opacity-75 mt-2 leading-relaxed">
                     {step === "church" ? ceremonyTime : receptionTime}
                     <br />
-                    {step === "church" ? EVENT.ceremonyPlace : EVENT.receptionPlace}
+                    {step === "church" ? event.ceremonyPlace : event.receptionPlace}
                   </p>
                 </div>
 
@@ -684,7 +688,7 @@ export default function RsvpModal({
                 </p>
                 <p className="mt-2 opacity-75">{t.giftListHint}</p>
                 <a
-                  href={EVENT.giftList}
+                  href={event.giftList}
                   target="_blank"
                   rel="noreferrer noopener"
                   className="pixel-btn mt-3 inline-flex items-center gap-2 border-2 border-black bg-pastel-blue px-3 py-2"

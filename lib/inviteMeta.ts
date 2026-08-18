@@ -1,4 +1,5 @@
-import { EVENT } from "@/lib/config";
+import { eventFor } from "@/lib/config";
+import type { EventDetails } from "@/lib/eventDetails";
 import type { Lang } from "@/lib/lang";
 
 /**
@@ -37,28 +38,32 @@ function title(lang: Lang, name: string | null): string {
   return `${name} — ${SITE_NAME[lang]}`;
 }
 
-function description(lang: Lang, name: string | null): string {
+function description(lang: Lang, name: string | null, event: EventDetails): string {
   if (lang === "pt") {
     const opening = name
       ? `${name}, vocês estão convidados para o batizado do Bernardo.`
       : "Você está convidado para o batizado do Bernardo.";
-    return `${opening} ${EVENT.ceremonyTimePt} · ${EVENT.ceremonyPlace}. Ajude o Bernardo a chegar à igreja em um joguinho e confirme sua presença no final — até ${EVENT.rsvpDeadlinePt}.`;
+    return `${opening} ${event.ceremonyTimePt} · ${event.ceremonyPlace}. Ajude o Bernardo a chegar à igreja em um joguinho e confirme sua presença no final — até ${event.rsvpDeadlinePt}.`;
   }
 
   if (lang === "en") {
     const opening = name
       ? `${name}, you are invited to Bernardo's christening.`
       : "You are invited to Bernardo's christening.";
-    return `${opening} ${EVENT.ceremonyTimeEn} · ${EVENT.ceremonyPlace}. Help Bernardo reach the church in a little game and reply at the finish line — by ${EVENT.rsvpDeadlineEn}.`;
+    return `${opening} ${event.ceremonyTimeEn} · ${event.ceremonyPlace}. Help Bernardo reach the church in a little game and reply at the finish line — by ${event.rsvpDeadlineEn}.`;
   }
 
   const opening = name
     ? `${name}, I er inviteret til Bernardos barnedåb.`
     : "Du er inviteret til Bernardos barnedåb.";
-  return `${opening} ${EVENT.ceremonyTime} · ${EVENT.ceremonyPlace}. Hjælp Bernardo hen til kirken i et lille spil og svar ved målstregen — senest den ${EVENT.rsvpDeadline}.`;
+  return `${opening} ${event.ceremonyTime} · ${event.ceremonyPlace}. Hjælp Bernardo hen til kirken i et lille spil og svar ved målstregen — senest den ${event.rsvpDeadline}.`;
 }
 
-export function inviteMeta(lang: Lang, name: string | null): InviteMeta {
+/**
+ * `demo` is the public link: the card it unfurls into is read by strangers, so
+ * it carries the fictional christening rather than a real family's address.
+ */
+export function inviteMeta(lang: Lang, name: string | null, demo = false): InviteMeta {
   // A blank name is no name: an all-whitespace household would otherwise show
   // up as a stray dash in front of the title.
   const household = name?.trim() || null;
@@ -66,7 +71,7 @@ export function inviteMeta(lang: Lang, name: string | null): InviteMeta {
   return {
     title: title(lang, household),
     siteName: SITE_NAME[lang],
-    description: description(lang, household),
+    description: description(lang, household, eventFor(demo)),
     locale: OG_LOCALE[lang],
     alternateLocales: Object.entries(OG_LOCALE)
       .filter(([id]) => id !== lang)

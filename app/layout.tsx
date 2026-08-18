@@ -1,11 +1,13 @@
 import type { Metadata, Viewport } from "next";
+import { EVENT } from "@/lib/config";
 import "./globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://bernardo-baptism.vercel.app";
 
 const title = "Bernardos barnedåb";
-const description =
-  "Bernardo Freitas de Souza bliver døbt den 3. oktober 2026. Hjælp bjørnen Bernardo og hunden Oscar med at nå kirken i et lille pixel-spil — og svar på invitationen ved målstregen.";
+// The child and the day are configuration, never source: an unconfigured build
+// says the fictional christening instead of a real one.
+const description = `${EVENT.child} bliver døbt — ${EVENT.ceremonyTime}. Hjælp bjørnen Bernardo og hunden Oscar med at nå kirken i et lille pixel-spil — og svar på invitationen ved målstregen.`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -15,16 +17,8 @@ export const metadata: Metadata = {
   },
   description,
   applicationName: title,
-  keywords: [
-    "barnedåb",
-    "christening",
-    "baptism",
-    "Bernardo",
-    "invitation",
-    "RSVP",
-    "3. oktober 2026",
-  ],
-  authors: [{ name: "Familien Freitas de Souza" }],
+  keywords: ["barnedåb", "christening", "baptism", "Bernardo", "invitation", "RSVP"],
+  authors: [{ name: `Familien ${EVENT.familyName}` }],
   alternates: {
     canonical: "/",
   },

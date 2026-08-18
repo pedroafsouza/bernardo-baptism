@@ -18,11 +18,20 @@ Built with Next.js 15 · React 19 · Phaser 3 · Prisma + SQLite · Tailwind
 
 ## The event
 
-|                |                                          |
-| -------------- | ---------------------------------------- |
-| **Child**      | Bernardo Freitas de Souza                |
-| **Born**       | 16.06.2026                               |
-| **Christening**| 03.10.2026                               |
+The child, the parents, the hours and the addresses are **not in this
+repository**. They are read from `NEXT_PUBLIC_EVENT_*` environment variables and
+injected by the deployment pipeline — see [Environment variables](#environment-variables).
+
+A checkout with nothing configured (and the public demo link, always) shows a
+christening that does not exist:
+
+|                 |                                             |
+| --------------- | ------------------------------------------- |
+| **Child**       | Bernardo Eksempel                           |
+| **Christening** | Eksempel Kirke, Eventyrvej 1, 1234 Eksempelby |
+
+Bernardo the bear and Oscar the dog are the story, so they stay in the code. The
+family around them is configuration.
 
 ---
 
@@ -72,17 +81,17 @@ Every guest opens their own link and is greeted by name — then the level start
   </tr>
 </table>
 
-A single 132-tile level runs from Hvidovre Hospital, where Bernardo was born, all
-the way to Filips Kirke — past windmills, half-timbered houses, a lighthouse, and
+A single 132-tile level runs from the hospital at the start all the way to the
+church at the finish — past windmills, half-timbered houses, a lighthouse, and
 flagpoles cycling Denmark → Brazil → Pernambuco → Straw Hat.
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/screenshots/gameplay-hospital.png" alt="The start of the level, outside Hvidovre Hospital" /></td>
+    <td width="50%"><img src="docs/screenshots/gameplay-hospital.png" alt="The start of the level, outside the hospital" /></td>
     <td width="50%"><img src="docs/screenshots/gameplay-village.png" alt="Midway through the level, past the village" /></td>
   </tr>
   <tr>
-    <td align="center"><em>The run starts where Bernardo did</em></td>
+    <td align="center"><em>The run starts at the hospital</em></td>
     <td align="center"><em>Oscar grows with every bone he is fed</em></td>
   </tr>
 </table>
@@ -247,7 +256,7 @@ Guest-facing writes (RSVP, score) are throttled per address as well.
 
 ```bash
 npm install
-cp .env.example .env      # DATABASE_URL only
+cp .env.example .env      # DATABASE_URL, and the event if you want your own
 npm run db:push           # create the SQLite schema
 npm run seed              # load the guest list and the first admin
 npm run dev
@@ -259,12 +268,44 @@ set a strong password when prompted.
 
 ### Environment variables
 
-`.env` is gitignored, and there is only one variable left — the admin
-credentials moved into the database where they can be rotated and revoked.
+`.env` is gitignored, and so are `.env.local` / `.env.*.local`. The admin
+credentials live in the database, where they can be rotated and revoked, and the
+invitation itself is configuration rather than source.
 
 | Variable       | Purpose                                       |
 | -------------- | --------------------------------------------- |
 | `DATABASE_URL` | Prisma connection string, e.g. `file:./dev.db` |
+| `NEXT_PUBLIC_SITE_URL` | Public origin, for absolute links in the preview cards |
+
+**The invitation** — every variable below is optional, and anything left unset
+falls back to the fictional christening in `lib/eventDetails.ts`:
+
+| Variable                            | Example                                              |
+| ----------------------------------- | ---------------------------------------------------- |
+| `NEXT_PUBLIC_EVENT_CHILD`           | `Bernardo Eksempel`                                   |
+| `NEXT_PUBLIC_EVENT_BIRTHDAY`        | `01.01.2026`                                          |
+| `NEXT_PUBLIC_EVENT_MOTHER`          | `Anna Eksempel`                                       |
+| `NEXT_PUBLIC_EVENT_FATHER`          | `Jonas Eksempel`                                      |
+| `NEXT_PUBLIC_EVENT_FAMILY_NAME`     | `Eksempel` — the shared surname, so an invitation is signed with it once |
+| `NEXT_PUBLIC_EVENT_CEREMONY_TIME_DA/EN/PT` | `Saturday 1 August 2026 at 11:00`              |
+| `NEXT_PUBLIC_EVENT_CEREMONY_PLACE`  | `Eksempel Kirke, Eventyrvej 1, 1234 Eksempelby`       |
+| `NEXT_PUBLIC_EVENT_RECEPTION_TIME_DA/EN/PT` | `Straight after the ceremony`                 |
+| `NEXT_PUBLIC_EVENT_RECEPTION_PLACE` | `Eksempel Forsamlingshus, Eventyrvej 7, 1234 Eksempelby` |
+| `NEXT_PUBLIC_EVENT_RSVP_DEADLINE_DA/EN/PT` | `1 July 2026`                                  |
+| `NEXT_PUBLIC_EVENT_GIFT_LIST`       | Wish-list URL                                         |
+
+They are `NEXT_PUBLIC_` because the invitation is drawn in the browser: Next
+compiles them into the client bundle **at build time**, so the build has to run
+with them set (which is exactly what the deploy does). Only put in them what the
+guests are meant to read.
+
+### The demo link never shows the real event
+
+`/?code=DEMO` plays the whole invitation — game, score, reply, leaderboard — but
+it is a public link, so it is answered with the fictional christening no matter
+what is configured: fake church, fake address, fake hour, fake parents, in the
+RSVP screens and in the preview card the link unfurls into. Nothing it does
+reaches the database either.
 
 ---
 
@@ -307,6 +348,28 @@ Finally the service restarts and the deploy only succeeds if the app answers
 | `DEPLOY_USER`        | Deploy user (`deploy`)                     |
 | `DEPLOY_SSH_KEY`     | Private key of a dedicated CI-only keypair |
 | `DEPLOY_KNOWN_HOSTS` | Pinned host key, so a deploy cannot be redirected elsewhere |
+| `EVENT_ENV`          | The invitation — the `NEXT_PUBLIC_EVENT_*` lines, as a dotenv block |
+
+### The invitation is injected, not committed
+
+`EVENT_ENV` is one secret holding the real names, hours and addresses as plain
+dotenv lines:
+
+```dotenv
+NEXT_PUBLIC_EVENT_CHILD="…"
+NEXT_PUBLIC_EVENT_CEREMONY_PLACE="…"
+…
+```
+
+The deploy base64-encodes it (quotes, accents and line breaks survive the ssh
+hop intact), and `scripts/deploy.sh` writes it to `.env.production.local` on the
+server **before** `npm run build`, because that is when Next bakes the values
+into the bundle. The file lives outside the git checkout the deploy resets, and
+is `chmod 600`.
+
+Leave the secret unset and the deploy still succeeds — with a warning, and with
+the fictional christening on the site. Changing the invitation is therefore a
+secret edit plus a re-run of the workflow, never a commit.
 
 ## Resetting the database
 
@@ -405,6 +468,8 @@ components/          React UI (intro, RSVP, leaderboard, bone race, icons)
 components/game/     Phaser scene factory and procedural textures
 components/admin/    Admin-only UI (invitations, danger zone, access, activity log)
 lib/                 config, i18n, invite templates, auth, audit, rate limiting
+lib/eventDetails.ts  the invitation as a type, plus the fictional fallback
+lib/config.ts        the event read from NEXT_PUBLIC_EVENT_* at build time
 lib/dailyBones.ts    the day's bone layout, derived from the date
 lib/boneReporter.ts  the 500 ms throttled queue that hands bones in
 lib/names.ts         splitting a household line into the people in it

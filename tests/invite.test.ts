@@ -4,9 +4,11 @@ import assert from "node:assert/strict";
 import { buildInviteMessage, inviteSignature, MESSAGE_LANGS } from "../lib/invite";
 
 test("the parents sign with the family name once, in the guest's language", () => {
-  assert.equal(inviteSignature("da"), "Birgitte og Pedro Augusto Freitas de Souza");
-  assert.equal(inviteSignature("en"), "Birgitte and Pedro Augusto Freitas de Souza");
-  assert.equal(inviteSignature("pt"), "Birgitte e Pedro Augusto Freitas de Souza");
+  // Unconfigured, so the fictional parents: the real ones live in the
+  // environment and are never in the repository.
+  assert.equal(inviteSignature("da"), "Anna og Jonas Eksempel");
+  assert.equal(inviteSignature("en"), "Anna and Jonas Eksempel");
+  assert.equal(inviteSignature("pt"), "Anna e Jonas Eksempel");
 });
 
 test("every invitation is signed, and never with an ampersand", () => {

@@ -20,6 +20,14 @@
 #                         upserts, so it refreshes names/groups and adds new
 #                         guests but preserves every RSVP, score and sent-flag.
 #
+# EVENT_ENV_B64:
+#   base64 of the dotenv block holding the real invitation — the child, the
+#   parents, the hours and the addresses (`NEXT_PUBLIC_EVENT_*`, see
+#   .env.example). It is written to .env.production.local before the build,
+#   because Next bakes those values into the browser bundle. Nothing about the
+#   family is in the repository: leave it unset and the site shows the
+#   fictional christening instead.
+#
 set -euo pipefail
 
 APP_DIR="${APP_DIR:-/srv/baptism}"
@@ -29,6 +37,7 @@ SEED_MODE="${SEED_MODE:-if-missing}"
 DEPLOY_REF="${DEPLOY_REF:-origin/main}"
 SERVICE="${SERVICE:-baptism}"
 KEEP_BACKUPS="${KEEP_BACKUPS:-20}"
+EVENT_ENV_B64="${EVENT_ENV_B64:-}"
 
 log() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 
@@ -118,6 +127,17 @@ log "Seating everybody named on an invitation"
 
 # ------------------------------------------------------------------- build
 log "Building"
+if [ -n "$EVENT_ENV_B64" ]; then
+  # The invitation is configuration, not source. Next reads .env.production.local
+  # during the build, and NEXT_PUBLIC_* values are compiled into the bundle, so
+  # this has to land before "run build" — and never inside the git checkout the
+  # deploy resets.
+  echo "$EVENT_ENV_B64" | base64 -d > "$APP_DIR/.env.production.local"
+  chmod 600 "$APP_DIR/.env.production.local"
+  echo "    wrote $APP_DIR/.env.production.local ($(grep -c . "$APP_DIR/.env.production.local") lines)"
+else
+  echo "    no EVENT_ENV_B64 given — keeping whatever the server already has"
+fi
 "$RUN" run build
 
 log "Restarting $SERVICE"

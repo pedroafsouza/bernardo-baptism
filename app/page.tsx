@@ -42,7 +42,10 @@ export async function generateMetadata({
   const params = await searchParams;
   const param = first(params.lang);
   const lang: Lang = isLang(param) ? param : DEFAULT_LANG;
-  const meta = inviteMeta(lang, await householdName(first(params.code)));
+  const code = first(params.code);
+  // The demo link is shared in the open, so its preview card names no real
+  // church and no real hour either.
+  const meta = inviteMeta(lang, await householdName(code), isDemoCode(safeId(code)));
 
   return {
     // Absolute: the household's own name is the headline, not a suffix on the
