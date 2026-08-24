@@ -73,8 +73,10 @@ export async function POST(req: NextRequest) {
     const { count } = await prisma.guest.updateMany({
       data: { bones: 0, blessings: 0, score: 0, bonesTotal: 0, playedAt: null },
     });
-    // The leaderboard and the bone race are one and the same result, so they
-    // are cleared together — a standing with no rows behind it is a lie.
+    // The leaderboard, the day-by-day totals behind it and the bone race are
+    // one and the same result, so they are cleared together — a standing with
+    // no rows behind it is a lie, and rows with no standing would rebuild it.
+    await prisma.dailyScore.deleteMany({});
     await prisma.boneCollection.deleteMany({});
     await record(count, `Leaderboard and bone race cleared for ${count} guests`);
     return NextResponse.json({
@@ -96,6 +98,7 @@ export async function POST(req: NextRequest) {
         playedAt: null,
       },
     });
+    await prisma.dailyScore.deleteMany({});
     await prisma.boneCollection.deleteMany({});
     await record(count, `${count} guests reset to PENDING`);
     return NextResponse.json({
@@ -107,6 +110,7 @@ export async function POST(req: NextRequest) {
   }
 
   // full — rebuild the guest list from scratch.
+  await prisma.dailyScore.deleteMany({});
   await prisma.boneCollection.deleteMany({});
   await prisma.guest.deleteMany({});
   await prisma.guest.createMany({

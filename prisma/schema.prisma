@@ -93,8 +93,13 @@ model Guest {
   likely        Boolean   @default(true)
   inviteSent    Boolean   @default(false)
   inviteSentAt  DateTime?
+  /// The best single run: the treats and blessings of the one day that went
+  /// best, kept for the "your best run" line rather than the standings.
   bones         Int       @default(0)
   blessings     Int       @default(0)
+  /// The leaderboard figure — the sum of every day's best run (see
+  /// `DailyScore`), so a household that comes back tomorrow climbs, and one
+  /// that replays today only ever improves today's contribution.
   score         Int       @default(0)
   /// Every distinct daily bone this household has ever picked up. Unlike
   /// `bones`, which is the best single run, this only ever grows — it is the
@@ -104,7 +109,33 @@ model Guest {
   updatedAt     DateTime  @updatedAt
   createdAt     DateTime  @default(now())
 
-  attendees Attendee[]
+  attendees   Attendee[]
+  dailyScores DailyScore[]
+}
+
+/// The best run one household managed on one day.
+///
+/// Oscar is fed every day, so a guest who comes back tomorrow should climb the
+/// leaderboard — but a guest who replays today over and over should not. Both
+/// fall out of storing one row per day and keeping only the best run in it:
+/// `Guest.score` is the sum of these rows, so every new day adds and every
+/// replay can only raise the day it belongs to.
+model DailyScore {
+  id        String   @id @default(uuid())
+  guestCode String
+  guest     Guest    @relation(fields: [guestCode], references: [guestCode], onDelete: Cascade)
+  /// `YYYY-MM-DD` in Europe/Copenhagen — the same day key the bones use.
+  day       String
+  bones     Int      @default(0)
+  blessings Int      @default(0)
+  finished  Boolean  @default(false)
+  score     Int      @default(0)
+  playedAt  DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([guestCode, day])
+  @@index([guestCode])
+  @@index([day])
 }
 
 /// One named adult on an invitation.

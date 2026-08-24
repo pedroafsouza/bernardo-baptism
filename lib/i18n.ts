@@ -132,6 +132,12 @@ type Dict = {
   genericError: string;
 
   yourScore: string;
+  /** The standing figure — every day played, added together. */
+  totalScore: string;
+  /** How many days that total is made of. */
+  scoreDays: (days: number) => string;
+  /** Shown under the score: playing again tomorrow adds to it. */
+  comeBackTomorrow: string;
   bonesCollected: string;
   blessingsFound: string;
   leaderboard: string;
@@ -274,6 +280,9 @@ const da: Dict = {
   genericError: "Noget gik galt",
 
   yourScore: "Din score",
+  totalScore: "Samlet score",
+  scoreDays: (days) => (days === 1 ? "fra 1 dag" : `fra ${days} dage`),
+  comeBackTomorrow: "Kom tilbage i morgen — hver dag, du spiller, lægges til din score.",
   bonesCollected: "Godbidder",
   blessingsFound: "Velsignelser",
   leaderboard: "Toplisten",
@@ -281,7 +290,7 @@ const da: Dict = {
   points: "point",
   rank: "#",
   player: "Spiller",
-  newRecord: "Ny personlig rekord!",
+  newRecord: "Ny rekord for i dag!",
 
   boneRace: "Benkonkurrencen",
   boneRaceEmpty: "Ingen har samlet ben endnu — bliv den første!",
@@ -414,6 +423,9 @@ const en: Dict = {
   genericError: "Something went wrong",
 
   yourScore: "Your score",
+  totalScore: "Total score",
+  scoreDays: (days) => (days === 1 ? "from 1 day" : `from ${days} days`),
+  comeBackTomorrow: "Come back tomorrow — every day you play is added to your score.",
   bonesCollected: "Treats",
   blessingsFound: "Blessings",
   leaderboard: "Leaderboard",
@@ -421,7 +433,7 @@ const en: Dict = {
   points: "points",
   rank: "#",
   player: "Player",
-  newRecord: "New personal best!",
+  newRecord: "New best for today!",
 
   boneRace: "Bone race",
   boneRaceEmpty: "Nobody has collected a bone yet — be the first!",
@@ -554,6 +566,9 @@ const pt: Dict = {
   genericError: "Algo deu errado",
 
   yourScore: "Sua pontuação",
+  totalScore: "Pontuação total",
+  scoreDays: (days) => (days === 1 ? "de 1 dia" : `de ${days} dias`),
+  comeBackTomorrow: "Volte amanhã — cada dia que você joga soma à sua pontuação.",
   bonesCollected: "Petiscos",
   blessingsFound: "Bênçãos",
   leaderboard: "Ranking",
@@ -561,7 +576,7 @@ const pt: Dict = {
   points: "pontos",
   rank: "#",
   player: "Jogador",
-  newRecord: "Novo recorde pessoal!",
+  newRecord: "Novo recorde de hoje!",
 
   boneRace: "Corrida dos ossos",
   boneRaceEmpty: "Ninguém juntou ossos ainda — seja o primeiro!",

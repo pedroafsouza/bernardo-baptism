@@ -37,7 +37,12 @@ export type RunResult = {
   blessings: number;
   finished: boolean;
   score: number;
+  /** True when this run improved the best already on record for today. */
   isBest: boolean;
+  /** The standing figure: every day this household has played, added up. */
+  total?: number;
+  /** How many days that total is made of. */
+  days?: number;
 };
 
 type Props = {
@@ -409,6 +414,26 @@ export default function RsvpModal({
                       <p className="mt-2 flex items-center gap-2 text-green-700">
                         <Icon name="trophy" className="h-4 w-4 shrink-0" /> {t.newRecord}
                       </p>
+                    )}
+                    {/* The standing figure is every day added together, so it is
+                        shown whenever the server has told us what it is — this
+                        is the number on the leaderboard, not the run above. */}
+                    {typeof run.total === "number" && (
+                      <div className="mt-2 border-t-2 border-black/10 pt-2">
+                        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-bold">
+                          <Icon name="trophy" className="h-4 w-4 shrink-0 text-amber-600" />
+                          {t.totalScore}:{" "}
+                          <span className="text-pastel-plum">{run.total}</span> {t.points}
+                          {run.days && run.days > 0 && (
+                            <span className="font-normal opacity-70">
+                              {t.scoreDays(run.days)}
+                            </span>
+                          )}
+                        </p>
+                        <p className="mt-1 text-[13px] leading-relaxed opacity-80">
+                          {t.comeBackTomorrow}
+                        </p>
+                      </div>
                     )}
                   </div>
                 )}

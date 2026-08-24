@@ -174,6 +174,15 @@ rows — today's race and the running total. Bones popped out of a "?" block are
 bonus treats that belong to no day: they count towards the score and towards
 feeding Oscar, but not towards the race.
 
+**The score is a running total too.** A run is filed against the day it was
+played (`DailyScore`, unique on guest + day) and a household's leaderboard
+figure is the sum of those rows. Coming back tomorrow therefore always adds to
+the standings, while replaying today can only ever raise today's own row — and
+only when the run was actually better. Same shape as the bones, so the two
+halves of the competition agree. `lib/dailyScore.ts` holds the rule; the total
+is re-derived from the rows on every submission rather than incremented, so a
+retried request or a second open tab can never inflate it.
+
 The closing screen has two tabs. It opens on **the reply**, because that is what
 the invitation is actually asking for and nothing should sit between the guest
 and the yes/no buttons. **The competition** — the bone race and the score
@@ -184,6 +193,7 @@ leaderboard — is one tap away, and stays reachable after the reply is sent.
 | `GET /api/bones`          | The day currently open, how many bones it holds, and (with `?code=`) which of them a guest already has |
 | `POST /api/bones`         | Hand in a batch: `{ guestCode, day, bones: number[] }`    |
 | `GET /api/bones/leaderboard` | Today's race and the all-time race                    |
+| `POST /api/score`         | File a finished run against its day: `{ guestCode, bones, blessings, finished, day }`. Answers with the run's own score and the household's running `total` |
 | `POST /api/visit`         | Counts an opened invitation, once per browser session    |
 
 ---

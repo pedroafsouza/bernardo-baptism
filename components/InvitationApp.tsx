@@ -143,11 +143,21 @@ function InvitationInner() {
         const res = await fetch("/api/score", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ guestCode: code, bones, blessings, finished }),
+          body: JSON.stringify({ guestCode: code, bones, blessings, finished, day }),
         });
         if (res.ok) {
           const d = await res.json();
-          setRun({ bones, blessings, finished, score, isBest: !!d.isBest });
+          // The server owns the running total — every day played is in it, so
+          // it is almost always larger than the run that was just handed in.
+          setRun({
+            bones,
+            blessings,
+            finished,
+            score,
+            isBest: !!d.isBest,
+            total: typeof d.total === "number" ? d.total : undefined,
+            days: typeof d.days === "number" ? d.days : undefined,
+          });
         }
       } catch {
         /* scoring is best-effort — never block the RSVP */
@@ -155,7 +165,7 @@ function InvitationInner() {
         setLeaderboardKey((k) => k + 1);
       }
     },
-    [code]
+    [code, day]
   );
 
   const openRsvp = useCallback(
