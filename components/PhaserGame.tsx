@@ -186,31 +186,32 @@ export default function PhaserGame({
   }, []);
 
   // ---- touch controls ----
-  // Which button each live finger/mouse pointer is currently holding. A touch
-  // implicitly captures its start target, so sliding a thumb from RIGHT to LEFT
-  // never fires leave/enter on the buttons themselves — the old code left RIGHT
-  // stuck down. We release that capture and route every pointer through this map
-  // so a key is only held while some pointer is actually on top of it.
-  const held = useRef<Map<number, keyof Control>>(new Map());
+  // Which pointers are pressing each button. Multiple pointers can press the
+  // same button, and a single pointer can press multiple buttons by moving from
+  // one to another. A button is held as long as any pointer is on it.
+  const held = useRef<Map<keyof Control, Set<number>>>(new Map());
 
   const press = useCallback((id: number, k: keyof Control) => {
-    const prev = held.current.get(id);
-    if (prev === k) return;
-    if (prev) ctrl.current[prev] = false;
-    held.current.set(id, k);
+    if (!held.current.has(k)) {
+      held.current.set(k, new Set());
+    }
+    const pointers = held.current.get(k)!;
+    if (pointers.has(id)) return;
+    pointers.add(id);
     ctrl.current[k] = true;
   }, []);
 
   const release = useCallback((id: number) => {
-    const prev = held.current.get(id);
-    if (!prev) return;
-    held.current.delete(id);
-    // another finger may still be resting on the same button
-    let stillHeld = false;
-    held.current.forEach((k) => {
-      if (k === prev) stillHeld = true;
+    let anyChanged = false;
+    held.current.forEach((pointers, k) => {
+      if (pointers.has(id)) {
+        pointers.delete(id);
+        anyChanged = true;
+        if (pointers.size === 0) {
+          ctrl.current[k] = false;
+        }
+      }
     });
-    if (!stillHeld) ctrl.current[prev] = false;
   }, []);
 
   // A finger lifted outside the pad (or a cancelled gesture) never reaches the
