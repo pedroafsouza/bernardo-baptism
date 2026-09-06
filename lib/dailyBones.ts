@@ -20,6 +20,7 @@
  */
 import { LEVELS, DEFAULT_LEVEL_ID } from "@/lib/levels/level01";
 import type { Level, TilePos } from "@/lib/levels/types";
+import { getCurrentDate } from "@/lib/dateOverride";
 
 /** The ground row every level is built on (row 9 is the dirt beneath it). */
 const GROUND_ROW = 8;
@@ -31,7 +32,7 @@ export const BONES_PER_DAY = 42;
 export const BONE_TIMEZONE = "Europe/Copenhagen";
 
 /** `YYYY-MM-DD` in the event's timezone — the identity of a day of bones. */
-export function boneDay(at: Date = new Date()): string {
+export function boneDay(at: Date = getCurrentDate()): string {
   try {
     return new Intl.DateTimeFormat("en-CA", {
       timeZone: BONE_TIMEZONE,
@@ -54,7 +55,7 @@ export function isBoneDay(value: unknown): value is string {
  * Yesterday and today are both accepted by the API: a run started just before
  * Danish midnight must still be able to hand in the bones it collected.
  */
-export function acceptableBoneDays(at: Date = new Date()): string[] {
+export function acceptableBoneDays(at: Date = getCurrentDate()): string[] {
   const yesterday = new Date(at.getTime() - 24 * 60 * 60 * 1000);
   return [boneDay(at), boneDay(yesterday)];
 }
