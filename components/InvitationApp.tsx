@@ -9,7 +9,7 @@ import Icon from "@/components/Icon";
 import { useLang } from "@/lib/i18n";
 import { computeScore } from "@/lib/config";
 import { DEMO_CODE, demoGuest, isDemoCode } from "@/lib/demo";
-import { boneDay } from "@/lib/dailyBones";
+import { boneDay, isBoneDay } from "@/lib/dailyBones";
 import { attendeeSlots, type AttendeeSlot } from "@/lib/attendees";
 import { createBoneReporter, type BoneReporter } from "@/lib/boneReporter";
 import VisitTracker from "@/components/VisitTracker";
@@ -48,9 +48,10 @@ function InvitationInner() {
   const [showIntro, setShowIntro] = useState(true);
   const [run, setRun] = useState<RunResult | null>(null);
   const [leaderboardKey, setLeaderboardKey] = useState(0);
-  // Which day's bones are on the ground. Fixed for the lifetime of the page, so
-  // a run that straddles midnight still hands its bones in to the day it was
-  // actually playing. Fetched from the API so server-side OVERRIDE_DATE is respected.
+  // Which day's bones are on the ground. The server decides it — the browser's
+  // clock can be set to anything, and only the server knows about OVERRIDE_DATE
+  // — and it is then fixed for the lifetime of the page, so a run that straddles
+  // midnight still hands its bones in to the day it was actually playing.
   const [day, setDay] = useState<string | null>(null);
   // Bones this guest already handed in today. Fetched before the level is built
   // so a reload never puts a collected bone back on the ground.
@@ -87,21 +88,19 @@ function InvitationInner() {
         setGuest(demo);
         setAttendees(attendeeSlots(demo));
         setCollected([]);
-        setDay(boneDay()); // Use local calculation for demo
+        setDay(boneDay()); // Never reaches the server, so there is nobody to ask.
         setLoading(false);
         return;
       }
       const query = `code=${encodeURIComponent(code)}`;
-      // Fetch the day from the API first (respects OVERRIDE_DATE on server)
-      const bonesResponse = await fetch(`/api/bones?${query}`);
-      const bonesData = bonesResponse.ok ? await bonesResponse.json() : {};
-      const resolvedDay = bonesData.day || boneDay(); // Fallback to client calculation
-      if (active) {
-        setDay(resolvedDay);
-      }
-
-      const [rsvp] = await Promise.allSettled([
+      // Both requests go out together, and neither is allowed to sink the
+      // other: a failed lookup must still leave a playable page behind.
+      const [rsvp, bones] = await Promise.allSettled([
         fetch(`/api/rsvp?${query}`),
+        // No `day` is asked for — the server names it. That is what makes
+        // OVERRIDE_DATE work, and it means a browser with a wrong clock cannot
+        // ask for a layout nobody else can see.
+        fetch(`/api/bones?${query}`),
       ]);
       try {
         if (rsvp.status === "fulfilled" && rsvp.value.ok) {
@@ -117,17 +116,20 @@ function InvitationInner() {
         /* ignore */
       }
       try {
-        const list =
-          bonesResponse.ok
-            ? ((bonesData).collected as unknown)
-            : [];
+        const data =
+          bones.status === "fulfilled" && bones.value.ok ? await bones.value.json() : {};
+        const list = data.collected as unknown;
         if (active) {
+          setDay(isBoneDay(data.day) ? data.day : boneDay());
           setCollected(Array.isArray(list) ? list.map(Number).filter(Number.isInteger) : []);
         }
       } catch {
         // The day's bones are worth playing for even if we could not ask what
-        // was already fetched — the server drops the duplicates anyway.
-        if (active) setCollected([]);
+        // was already handed in — the server drops the duplicates anyway.
+        if (active) {
+          setDay(boneDay());
+          setCollected([]);
+        }
       }
       if (active) setLoading(false);
     }
@@ -135,7 +137,7 @@ function InvitationInner() {
     return () => {
       active = false;
     };
-  }, [code, day]);
+  }, [code]);
 
   const submitRun = useCallback(
     async (finished: boolean) => {
@@ -207,7 +209,7 @@ function InvitationInner() {
     );
   }
 
-  if (loading || collected === null) {
+  if (loading || collected === null || day === null) {
     return (
       <main className="game-root flex items-center justify-center">
         <p className="text-black text-xs animate-pulse flex items-center gap-2">
@@ -238,20 +240,18 @@ function InvitationInner() {
   return (
     <main className="game-root relative">
       <VisitTracker code={guest.guestCode} lang={lang} />
-      {day !== null && (
-        <PhaserGame
-          key={lang}
-          lang={lang}
-          day={day}
-          collected={collected ?? []}
-          onEnterChurch={() => openRsvp(true)}
-          onBoneCollected={(boneIndex) => reporter.current?.collect(boneIndex)}
-          onProgress={(p) => {
-            progress.current = p;
-          }}
-          disabled={showModal || showIntro}
-        />
-      )}
+      <PhaserGame
+        key={lang}
+        lang={lang}
+        day={day}
+        collected={collected}
+        onEnterChurch={() => openRsvp(true)}
+        onBoneCollected={(boneIndex) => reporter.current?.collect(boneIndex)}
+        onProgress={(p) => {
+          progress.current = p;
+        }}
+        disabled={showModal || showIntro}
+      />
 
       {!showIntro && !showModal && (
         <button

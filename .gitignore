@@ -8,6 +8,7 @@ build
 .env.local
 .env.*.local
 prisma/*.db
+prisma/backups
 prisma/*.db-journal
 prisma/*.db-wal
 prisma/*.db-shm

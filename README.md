@@ -428,8 +428,7 @@ group, so a reset can never race a deploy.
 
 | Command          | What it does                              |
 | ---------------- | ----------------------------------------- |
-| `npm run dev`    | Development server                        |
-| `npm run dev` with `OVERRIDE_DATE` | Test multi-day scoring: `OVERRIDE_DATE=2026-09-07 npm run dev` (format: YYYY-MM-DD) |
+| `npm run dev`    | Development server (`OVERRIDE_DATE=YYYY-MM-DD` to play another day — see below) |
 | `npm run build`  | `prisma generate` + production build      |
 | `npm run start`  | Serve the production build                |
 | `npm run db:push`| Sync the Prisma schema to SQLite          |
@@ -437,34 +436,64 @@ group, so a reset can never race a deploy.
 | `npm run db:backfill` | Fill in invitation capacity for rows that predate it (idempotent) |
 | `npm run db:split` | Give everybody named on an invitation their own seat to answer from — "and", "og", "e" and a comma each mean another person (idempotent; `--dry-run` to preview) |
 | `npm run db:verify` | Check a database is fit to be production: every guest registered with the right capacity, and an administrator present |
-| `npm test`       | Unit tests for the password policy, the invitation capacity rules, the daily bone layout, the throttled hand-in and the name splitting |
+| `npm test`       | Unit tests for the password policy, the invitation capacity rules, the daily bone layout, the day override, the throttled hand-in and the name splitting |
 
 ---
 
-## Testing multi-day scoring
+## Playing another day
 
-The game rewards players for coming back every day — the leaderboard total is the sum of every day's best run. To test this without waiting for real calendar days to pass, use the `OVERRIDE_DATE` environment variable:
+The standings reward coming back: a household's leaderboard figure is the sum
+of its best run on every day it has played, so tomorrow always adds, while
+replaying today can only raise today's own contribution. Waiting for real
+midnights is a poor way to check that, so the server can be told to pretend.
 
 ```bash
-# Simulate Day 1
-OVERRIDE_DATE=2026-09-06 npm run dev
-# Guest plays and scores 1000 points → leaderboard shows 1000
+# Day one
+OVERRIDE_DATE=2026-09-06 npm run dev     # a run worth 1000 → the board shows 1000
 
-# Simulate Day 2 (in another terminal)
-OVERRIDE_DATE=2026-09-07 npm run dev
-# Same guest plays and scores 900 points → leaderboard shows 1900 (cumulative)
+# Day two — stop the server, start it again on the next date
+OVERRIDE_DATE=2026-09-07 npm run dev     # a run worth 900  → the board shows 1900
 
-# Simulate Day 2 replay (same day)
-# Guest plays again and scores 950 points → leaderboard shows 1950 (only today's best improves)
+# Day two again, without restarting
+                                         # a run worth 950  → the board shows 1950
 ```
 
-The `OVERRIDE_DATE` environment variable:
-- Format: `YYYY-MM-DD` (ISO 8601)
-- Only affects server-side date calculations (bones layout, scoring API)
-- Invalid dates fall back to the current date with a warning
-- Disabled when not set (production always uses the real date)
+`OVERRIDE_DATE` is `YYYY-MM-DD`, and it is read once when the process starts —
+changing it means restarting the server, not opening a second terminal.
 
-See `lib/dateOverride.ts` for implementation details.
+It is a **server** switch. The browser's clock is never trusted with the day:
+the page asks `/api/bones` which day it is and plays that one, so the bones on
+the ground, the bones the server will accept and the day a score is filed under
+are always the same day. That is also the bug this replaced — the day used to be
+computed in the browser, which quietly ignored the override and filed every run
+under the real date.
+
+Two things it deliberately will not do:
+
+- **It is ignored in production.** A variable left behind in a deployment would
+  freeze the whole event on one date and silently stop the standings growing,
+  which is far worse than not being able to time-travel on a live server. When
+  `NODE_ENV=production` the real date is used and a warning is logged.
+- **It will not accept a date that does not exist.** Anything that is not a real
+  `YYYY-MM-DD` — `07-09-2026`, `2026-2-31` — is refused with a warning and the
+  real date is used, rather than rolling over to some neighbouring day.
+
+See `lib/dateOverride.ts`, and `tests/dateOverride.test.ts` for what is
+guaranteed.
+
+---
+
+## Backups
+
+`npm run seed`, `npm run db:backfill` and `npm run db:split` all write to a
+database that, by the time they are run for the second time, holds answers
+nobody can type back in. So each of them copies the database aside first, into
+`prisma/backups/`, stamped with the time it ran. `--dry-run` reads only and
+leaves no copy.
+
+The directory is ignored by git, and deliberately: those files hold guests'
+names and their replies. A checkout with no database yet — a first seed — has
+nothing to lose, so the backup is skipped with a note rather than refused.
 
 ---
 

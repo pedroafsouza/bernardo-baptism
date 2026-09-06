@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { createBackup } from "./backup";
 
 const prisma = new PrismaClient();
 
@@ -13,6 +14,7 @@ const prisma = new PrismaClient();
  * this twice changes nothing.
  */
 async function main() {
+  createBackup();
   const guests = await prisma.guest.findMany();
   let raised = 0;
 

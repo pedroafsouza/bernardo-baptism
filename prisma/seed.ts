@@ -3,6 +3,7 @@ import { SEED_GUESTS } from "./guests";
 import { hashPassword } from "../lib/password";
 import { clampParty } from "../lib/capacity";
 import { countGuestNames } from "../lib/names";
+import { createBackup } from "./backup";
 
 const prisma = new PrismaClient();
 
@@ -108,6 +109,7 @@ async function backfillChurch() {
 }
 
 async function main() {
+  createBackup();
   console.log(`Seeding ${SEED_GUESTS.length} guests...`);
 
   const codes = new Set(SEED_GUESTS.map((g) => g.guestCode));

@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { attendeeSlots, adultSeats, partyFromAttendees } from "../lib/attendees";
+import { createBackup } from "./backup";
 
 const prisma = new PrismaClient();
 
@@ -34,6 +35,8 @@ const prisma = new PrismaClient();
 const dryRun = process.argv.includes("--dry-run") || process.argv.includes("-n");
 
 async function main() {
+  // A dry run only reads, so it leaves no copy behind.
+  if (!dryRun) createBackup();
   const guests = await prisma.guest.findMany({ orderBy: { guestCode: "asc" } });
   let seated = 0;
   let peopled = 0;
