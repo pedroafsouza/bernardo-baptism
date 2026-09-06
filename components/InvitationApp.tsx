@@ -50,8 +50,8 @@ function InvitationInner() {
   const [leaderboardKey, setLeaderboardKey] = useState(0);
   // Which day's bones are on the ground. Fixed for the lifetime of the page, so
   // a run that straddles midnight still hands its bones in to the day it was
-  // actually playing.
-  const [day] = useState(() => boneDay());
+  // actually playing. Fetched from the API so server-side OVERRIDE_DATE is respected.
+  const [day, setDay] = useState<string | null>(null);
   // Bones this guest already handed in today. Fetched before the level is built
   // so a reload never puts a collected bone back on the ground.
   const [collected, setCollected] = useState<number[] | null>(null);
@@ -64,7 +64,7 @@ function InvitationInner() {
   const reporter = useRef<BoneReporter | null>(null);
 
   useEffect(() => {
-    if (!code || collected === null) return;
+    if (!code || day === null || collected === null) return;
     const instance = createBoneReporter({ guestCode: code, day, known: collected });
     reporter.current = instance;
     return () => {
@@ -87,13 +87,21 @@ function InvitationInner() {
         setGuest(demo);
         setAttendees(attendeeSlots(demo));
         setCollected([]);
+        setDay(boneDay()); // Use local calculation for demo
         setLoading(false);
         return;
       }
       const query = `code=${encodeURIComponent(code)}`;
-      const [rsvp, bones] = await Promise.allSettled([
+      // Fetch the day from the API first (respects OVERRIDE_DATE on server)
+      const bonesResponse = await fetch(`/api/bones?${query}`);
+      const bonesData = bonesResponse.ok ? await bonesResponse.json() : {};
+      const resolvedDay = bonesData.day || boneDay(); // Fallback to client calculation
+      if (active) {
+        setDay(resolvedDay);
+      }
+
+      const [rsvp] = await Promise.allSettled([
         fetch(`/api/rsvp?${query}`),
-        fetch(`/api/bones?${query}&day=${encodeURIComponent(day)}`),
       ]);
       try {
         if (rsvp.status === "fulfilled" && rsvp.value.ok) {
@@ -110,8 +118,8 @@ function InvitationInner() {
       }
       try {
         const list =
-          bones.status === "fulfilled" && bones.value.ok
-            ? ((await bones.value.json()).collected as unknown)
+          bonesResponse.ok
+            ? ((bonesData).collected as unknown)
             : [];
         if (active) {
           setCollected(Array.isArray(list) ? list.map(Number).filter(Number.isInteger) : []);
@@ -230,18 +238,20 @@ function InvitationInner() {
   return (
     <main className="game-root relative">
       <VisitTracker code={guest.guestCode} lang={lang} />
-      <PhaserGame
-        key={lang}
-        lang={lang}
-        day={day}
-        collected={collected}
-        onEnterChurch={() => openRsvp(true)}
-        onBoneCollected={(boneIndex) => reporter.current?.collect(boneIndex)}
-        onProgress={(p) => {
-          progress.current = p;
-        }}
-        disabled={showModal || showIntro}
-      />
+      {day !== null && (
+        <PhaserGame
+          key={lang}
+          lang={lang}
+          day={day}
+          collected={collected ?? []}
+          onEnterChurch={() => openRsvp(true)}
+          onBoneCollected={(boneIndex) => reporter.current?.collect(boneIndex)}
+          onProgress={(p) => {
+            progress.current = p;
+          }}
+          disabled={showModal || showIntro}
+        />
+      )}
 
       {!showIntro && !showModal && (
         <button
