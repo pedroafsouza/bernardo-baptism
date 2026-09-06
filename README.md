@@ -429,6 +429,7 @@ group, so a reset can never race a deploy.
 | Command          | What it does                              |
 | ---------------- | ----------------------------------------- |
 | `npm run dev`    | Development server                        |
+| `npm run dev` with `OVERRIDE_DATE` | Test multi-day scoring: `OVERRIDE_DATE=2026-09-07 npm run dev` (format: YYYY-MM-DD) |
 | `npm run build`  | `prisma generate` + production build      |
 | `npm run start`  | Serve the production build                |
 | `npm run db:push`| Sync the Prisma schema to SQLite          |
@@ -437,6 +438,33 @@ group, so a reset can never race a deploy.
 | `npm run db:split` | Give everybody named on an invitation their own seat to answer from — "and", "og", "e" and a comma each mean another person (idempotent; `--dry-run` to preview) |
 | `npm run db:verify` | Check a database is fit to be production: every guest registered with the right capacity, and an administrator present |
 | `npm test`       | Unit tests for the password policy, the invitation capacity rules, the daily bone layout, the throttled hand-in and the name splitting |
+
+---
+
+## Testing multi-day scoring
+
+The game rewards players for coming back every day — the leaderboard total is the sum of every day's best run. To test this without waiting for real calendar days to pass, use the `OVERRIDE_DATE` environment variable:
+
+```bash
+# Simulate Day 1
+OVERRIDE_DATE=2026-09-06 npm run dev
+# Guest plays and scores 1000 points → leaderboard shows 1000
+
+# Simulate Day 2 (in another terminal)
+OVERRIDE_DATE=2026-09-07 npm run dev
+# Same guest plays and scores 900 points → leaderboard shows 1900 (cumulative)
+
+# Simulate Day 2 replay (same day)
+# Guest plays again and scores 950 points → leaderboard shows 1950 (only today's best improves)
+```
+
+The `OVERRIDE_DATE` environment variable:
+- Format: `YYYY-MM-DD` (ISO 8601)
+- Only affects server-side date calculations (bones layout, scoring API)
+- Invalid dates fall back to the current date with a warning
+- Disabled when not set (production always uses the real date)
+
+See `lib/dateOverride.ts` for implementation details.
 
 ---
 
