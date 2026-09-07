@@ -395,8 +395,19 @@ export async function PATCH(req: NextRequest) {
   // Taking a household off the public standings is its own small edit: it
   // touches nothing they answered and nothing they scored, so it is answered
   // before the invitation flag rather than folded into it.
+  //
+  // Only a real boolean is accepted. Coercing would read the string "false" —
+  // the shape a buggy client is most likely to send — as a yes, and quietly
+  // publish a household the hosts had just hidden.
   if (body.data.onScoreboard !== undefined) {
-    const listed = Boolean(body.data.onScoreboard);
+    const listed = body.data.onScoreboard;
+    if (typeof listed !== "boolean") {
+      return NextResponse.json(
+        { error: "onScoreboard must be a boolean" },
+        { status: 400 }
+      );
+    }
+
     const guest = await prisma.guest.update({
       where: { id },
       data: { onScoreboard: listed },

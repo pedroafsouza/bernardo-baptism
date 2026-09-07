@@ -1141,6 +1141,7 @@ function AdminPageInner() {
                       <button
                         type="button"
                         aria-pressed={g.onScoreboard}
+                        aria-label={g.onScoreboard ? t.onScoreboard : t.offScoreboard}
                         title={g.onScoreboard ? t.onScoreboard : t.offScoreboard}
                         onClick={() => setOnScoreboard(g, !g.onScoreboard)}
                         className={`pixel-btn border-2 border-black p-0.5 ${
