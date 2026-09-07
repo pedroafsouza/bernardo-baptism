@@ -332,6 +332,7 @@ export async function PATCH(req: NextRequest) {
   const body = await readJson<{
     id?: unknown;
     inviteSent?: unknown;
+    onScoreboard?: unknown;
     attendees?: unknown;
     churchKids?: unknown;
     kids?: unknown;
@@ -389,6 +390,29 @@ export async function PATCH(req: NextRequest) {
       guest,
       attendees: slots,
     });
+  }
+
+  // Taking a household off the public standings is its own small edit: it
+  // touches nothing they answered and nothing they scored, so it is answered
+  // before the invitation flag rather than folded into it.
+  if (body.data.onScoreboard !== undefined) {
+    const listed = Boolean(body.data.onScoreboard);
+    const guest = await prisma.guest.update({
+      where: { id },
+      data: { onScoreboard: listed },
+    });
+
+    await audit({
+      action: listed ? "GUEST_SCOREBOARD_SHOWN" : "GUEST_SCOREBOARD_HIDDEN",
+      actorName: session.admin.username,
+      actorId: session.admin.id,
+      targetType: "guest",
+      targetId: guest.guestCode,
+      detail: guest.name,
+      req,
+    });
+
+    return NextResponse.json({ ok: true, guest });
   }
 
   const sent = Boolean(body.data.inviteSent);

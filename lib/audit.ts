@@ -25,6 +25,9 @@ export const AUDIT_ACTIONS = [
   "GUEST_DELETED",
   "INVITE_MARKED_SENT",
   "INVITE_MARKED_UNSENT",
+  // Listed on, or taken off, the public standings.
+  "GUEST_SCOREBOARD_SHOWN",
+  "GUEST_SCOREBOARD_HIDDEN",
   "INVITE_MESSAGE_OPENED",
   "GUEST_LINK_COPIED",
   "RSVP_SUBMITTED",
