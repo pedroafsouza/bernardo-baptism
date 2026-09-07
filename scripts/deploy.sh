@@ -43,6 +43,16 @@ log() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 
 cd "$APP_DIR"
 
+# Backups on this server are this script's business, and it takes one below:
+# once, before anything has been touched, with sqlite3 rather than cp — the
+# only safe way to read a live SQLite file — and pruned to the last
+# $KEEP_BACKUPS. The seed, the backfill and the split each take their own when
+# somebody runs them by hand, which here would mean two or three further copies
+# of the same rows, taken later, less safely, and into a directory nothing
+# prunes. Set unconditionally: a fresh database is created by the seed, so the
+# scripts after it would find one to copy.
+export SKIP_DB_BACKUP=1
+
 # ---------------------------------------------------------------- pre-flight
 DB_EXISTED=false
 if [ -f "$DB_PATH" ]; then

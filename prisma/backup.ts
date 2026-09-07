@@ -11,6 +11,13 @@ import { fileURLToPath } from "url";
  *
  * Backups live next to the database in `prisma/backups/` and are ignored by
  * git, which is deliberate: they hold guests' names and answers.
+ *
+ * This is for a script run by hand. The deploy takes its own copy, before it
+ * has touched anything and with `sqlite3 .backup`, which is the only safe way
+ * to read a live SQLite file — a plain copy of a database mid-write can catch
+ * it between the WAL and the main file. It also prunes what it keeps. So the
+ * deploy sets `SKIP_DB_BACKUP=1` rather than collecting a second, worse copy
+ * from every script it runs.
  */
 
 /** Where `prisma/schema.prisma` lives — relative URLs are resolved from here. */
@@ -48,8 +55,16 @@ export function databaseFile(url = process.env.DATABASE_URL): string | null {
  *
  * A missing database is not a failure: the first seed of a fresh checkout has
  * nothing to lose, and refusing to run would be the more annoying answer.
+ *
+ * `SKIP_DB_BACKUP=1` turns it off, for the one caller that has already taken a
+ * better copy — see the note on that constant.
  */
 export function createBackup(): string | null {
+  if (process.env.SKIP_DB_BACKUP === "1") {
+    console.log("SKIP_DB_BACKUP=1 — assuming the caller has already taken one.");
+    return null;
+  }
+
   const dbPath = databaseFile();
   if (!dbPath) {
     console.warn("No SQLite DATABASE_URL — skipping backup.");

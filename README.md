@@ -297,6 +297,7 @@ invitation itself is configuration rather than source.
 | `DATABASE_URL` | Prisma connection string, e.g. `file:./dev.db` |
 | `NEXT_PUBLIC_SITE_URL` | Public origin, for absolute links in the preview cards |
 | `OVERRIDE_DATE` | Development only — pretend it is another day, `YYYY-MM-DD`. See [Playing another day](#playing-another-day) |
+| `SKIP_DB_BACKUP` | `1` stops the seed/backfill/split scripts copying the database aside. Set by the deploy, which takes a better copy itself. See [Backups](#backups) |
 
 **The invitation** — every variable below is optional, and anything left unset
 falls back to the fictional christening in `lib/eventDetails.ts`:
@@ -498,16 +499,23 @@ list of promises.
 
 ## Backups
 
-`npm run seed`, `npm run db:backfill` and `npm run db:split` all write to a
-database that, by the time they are run for the second time, holds answers
-nobody can type back in. So each of them copies the database aside first, into
-`prisma/backups/`, stamped with the time it ran. `--dry-run` reads only and
+**Run by hand**, `npm run seed`, `npm run db:backfill` and `npm run db:split`
+all write to a database that, by the time they are run for the second time,
+holds answers nobody can type back in. So each copies the database aside first,
+into `prisma/backups/`, stamped with the time it ran. `--dry-run` reads only and
 leaves no copy.
 
-This is not the same thing as the admin panel's **Farezone**, which takes no
-copy: those resets are deliberate, confirmed by typing `RESET`, and recorded in
-the activity log. The backups here guard against a script, not against a
-decision.
+**The deploy takes its own, and is the one that matters.** `scripts/deploy.sh`
+has always copied the production database before it applies a schema or runs a
+script, and it does it better: once, before anything has been touched, with
+`sqlite3 .backup` — the only safe way to read a database that is being written
+to — into `/srv/baptism/backups/`, pruned to the last 20. So the deploy exports
+`SKIP_DB_BACKUP=1` and the scripts above defer to it, rather than leaving two
+or three further copies of the same rows in a directory nothing prunes.
+
+Neither is the same thing as the admin panel's **Farezone**, which takes no copy
+at all: those resets are deliberate, confirmed by typing `RESET`, and recorded
+in the activity log. Backups guard against a script, not against a decision.
 
 The directory is ignored by git, and deliberately: those files hold guests'
 names and their replies. A checkout with no database yet — a first seed — has
