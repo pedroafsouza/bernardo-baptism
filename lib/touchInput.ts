@@ -84,9 +84,10 @@ export function createTouchHolds(sink: HoldSink): TouchHolds {
     },
 
     clear() {
+      const downKeys = Array.from(held.keys());
       held.clear();
-      for (const key of HOLD_KEYS) sink(key, false);
-    },
+      for (const key of downKeys) sink(key, false);
+    }
 
     isDown,
   };
