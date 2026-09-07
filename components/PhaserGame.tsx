@@ -6,6 +6,7 @@ import type { Control } from "@/lib/gameConstants";
 import Icon from "@/components/Icon";
 import { DICTS, type Lang } from "@/lib/i18n";
 import { getMusic, readMuted, writeMuted } from "@/lib/music";
+import { createTouchHolds, type HoldKey, type TouchHolds } from "@/lib/touchInput";
 
 type Props = {
   onEnterChurch: () => void;
@@ -186,32 +187,27 @@ export default function PhaserGame({
   }, []);
 
   // ---- touch controls ----
-  // Which pointers are pressing each button. Multiple pointers can press the
-  // same button, and a single pointer can press multiple buttons by moving from
-  // one to another. A button is held as long as any pointer is on it.
-  const held = useRef<Map<keyof Control, Set<number>>>(new Map());
+  // `lib/touchInput` owns which pointers are on which button; the pad only has
+  // to forward the events and copy the result into the flags the scene reads.
+  const holds = useRef<TouchHolds | null>(null);
+  if (!holds.current) {
+    holds.current = createTouchHolds((k, down) => {
+      ctrl.current[k] = down;
+    });
+  }
 
-  const press = useCallback((id: number, k: keyof Control) => {
-    if (!held.current.has(k)) {
-      held.current.set(k, new Set());
-    }
-    const pointers = held.current.get(k)!;
-    if (pointers.has(id)) return;
-    pointers.add(id);
-    ctrl.current[k] = true;
+  const press = useCallback((id: number, k: HoldKey) => {
+    holds.current?.press(id, k);
   }, []);
 
+  /** The pointer left one button; it may have landed on another one. */
+  const releaseFrom = useCallback((id: number, k: HoldKey) => {
+    holds.current?.releaseFrom(id, k);
+  }, []);
+
+  /** The pointer itself is gone. */
   const release = useCallback((id: number) => {
-    let anyChanged = false;
-    held.current.forEach((pointers, k) => {
-      if (pointers.has(id)) {
-        pointers.delete(id);
-        anyChanged = true;
-        if (pointers.size === 0) {
-          ctrl.current[k] = false;
-        }
-      }
-    });
+    holds.current?.release(id);
   }, []);
 
   // A finger lifted outside the pad (or a cancelled gesture) never reaches the
@@ -229,14 +225,11 @@ export default function PhaserGame({
   // The pad is hidden/disabled mid-hold when a modal opens — drop every key.
   useEffect(() => {
     if (!disabled) return;
-    held.current.clear();
-    ctrl.current.left = false;
-    ctrl.current.right = false;
-    ctrl.current.jump = false;
+    holds.current?.clear();
   }, [disabled]);
 
   const holdBtn = useCallback(
-    (k: keyof Control, label: React.ReactNode, extra = "") => (
+    (k: HoldKey, label: React.ReactNode, extra = "") => (
       <button
         aria-label={k}
         className={`select-none pixel-btn flex items-center justify-center border-4 border-black text-black active:brightness-90 ${extra}`}
@@ -257,14 +250,14 @@ export default function PhaserGame({
           e.preventDefault();
           release(e.pointerId);
         }}
-        onPointerLeave={(e) => release(e.pointerId)}
+        onPointerLeave={(e) => releaseFrom(e.pointerId, k)}
         onPointerCancel={(e) => release(e.pointerId)}
         onContextMenu={(e) => e.preventDefault()}
       >
         {label}
       </button>
     ),
-    [press, release]
+    [press, release, releaseFrom]
   );
 
   // Every bone Bernardo grabs bumps `coins`, which re-renders this component.
