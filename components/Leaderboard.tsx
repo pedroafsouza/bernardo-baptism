@@ -9,7 +9,8 @@ export type LeaderboardEntry = {
   name: string;
   score: number;
   bones: number;
-  guestCode: string;
+  /** Set by the server for the row belonging to the code we asked with. */
+  you: boolean;
 };
 
 type Props = {
@@ -28,7 +29,10 @@ export default function Leaderboard({ lang, highlightCode, refreshKey = 0 }: Pro
 
   useEffect(() => {
     let active = true;
-    fetch("/api/leaderboard")
+    // We name ourselves so the server can point our row out, rather than
+    // reading everybody's invitation code off the answer.
+    const query = highlightCode ? `?code=${encodeURIComponent(highlightCode)}` : "";
+    fetch(`/api/leaderboard${query}`)
       .then((r) => (r.ok ? r.json() : { entries: [] }))
       .then((d) => {
         if (active) setEntries(d.entries ?? []);
@@ -37,7 +41,7 @@ export default function Leaderboard({ lang, highlightCode, refreshKey = 0 }: Pro
     return () => {
       active = false;
     };
-  }, [refreshKey]);
+  }, [refreshKey, highlightCode]);
 
   return (
     <div className="bg-white border-4 border-black p-3 text-[14px] leading-relaxed">
@@ -60,11 +64,9 @@ export default function Leaderboard({ lang, highlightCode, refreshKey = 0 }: Pro
         <ol className="space-y-1">
           {entries.map((e) => (
             <li
-              key={e.guestCode}
+              key={e.rank}
               className={`flex items-center gap-2 px-2 py-1 border-2 ${
-                e.guestCode === highlightCode
-                  ? "border-black bg-pastel-green"
-                  : "border-transparent"
+                e.you ? "border-black bg-pastel-green" : "border-transparent"
               }`}
             >
               <span className="w-6 shrink-0 text-center">

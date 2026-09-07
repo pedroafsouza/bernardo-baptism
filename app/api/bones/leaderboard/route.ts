@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { boneDay, isBoneDay } from "@/lib/dailyBones";
+import { safeId } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
@@ -11,11 +12,14 @@ const TOP = 10;
  *
  * Two standings from the same rows: who fed Oscar most today, and who has fed
  * him most since the invitations went out. Names and totals only — an
- * invitation code is never anything but a key here.
+ * invitation code is a key, never part of the answer, so a caller who wants
+ * their own row pointed out says who they are with `?code=` and is told only
+ * whether each row is theirs.
  */
 export async function GET(req: NextRequest) {
   const requested = req.nextUrl.searchParams.get("day");
   const day = isBoneDay(requested) ? requested : boneDay();
+  const asking = safeId(req.nextUrl.searchParams.get("code"));
 
   const [todayRows, allTimeRows] = await Promise.all([
     prisma.boneCollection.groupBy({
@@ -52,7 +56,13 @@ export async function GET(req: NextRequest) {
       }))
       .sort((a, b) => b.bones - a.bones || a.name.localeCompare(b.name))
       .slice(0, TOP)
-      .map((e, i) => ({ rank: i + 1, ...e }));
+      // The code is dropped on the way out: it was only ever the key the two
+      // queries were joined on.
+      .map(({ guestCode, ...e }, i) => ({
+        rank: i + 1,
+        ...e,
+        you: asking !== null && guestCode === asking,
+      }));
 
   return NextResponse.json({
     day,

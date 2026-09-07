@@ -174,6 +174,12 @@ rows — today's race and the running total. Bones popped out of a "?" block are
 bonus treats that belong to no day: they count towards the score and towards
 feeding Oscar, but not towards the race.
 
+**A standing names nobody's invitation.** An invitation code opens a household's
+page and answers on their behalf, so neither public standing puts one in its
+answer: they carry names and totals, and a guest who wants their own row picked
+out asks with `?code=` and is told only which row is theirs. The code stays the
+key the query joins on, never part of what is published.
+
 **The score is a running total too.** A run is filed against the day it was
 played (`DailyScore`, unique on guest + day) and a household's leaderboard
 figure is the sum of those rows. Coming back tomorrow therefore always adds to
@@ -192,7 +198,7 @@ leaderboard — is one tap away, and stays reachable after the reply is sent.
 | ------------------------- | -------------------------------------------------------- |
 | `GET /api/bones`          | The day currently open, how many bones it holds, and (with `?code=`) which of them a guest already has |
 | `POST /api/bones`         | Hand in a batch: `{ guestCode, day, bones: number[] }`    |
-| `GET /api/bones/leaderboard` | Today's race and the all-time race                    |
+| `GET /api/bones/leaderboard` | Today's race and the all-time race. Names and totals only; with `?code=` each row says whether it is yours |
 | `POST /api/score`         | File a finished run against its day: `{ guestCode, bones, blessings, finished, day }`. Answers with the run's own score and the household's running `total` |
 | `POST /api/visit`         | Counts an opened invitation, once per browser session    |
 
