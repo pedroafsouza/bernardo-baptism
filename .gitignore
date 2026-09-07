@@ -1,4 +1,7 @@
 node_modules
+# pnpm is the package manager (see packageManager in package.json). A stray npm
+# lockfile would disagree with pnpm-lock.yaml and CI installs from the latter.
+package-lock.json
 .next
 out
 build

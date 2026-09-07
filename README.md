@@ -53,7 +53,8 @@ family around them is configuration.
   Bernardo welcomes each person by name, in the language the link was opened in.
   Then Oscar takes over and explains the bones.
 - **Leaderboard.** 10 points per bone, 100 per blessing, 250 for reaching the
-  church. Best run per guest wins.
+  church. A household's figure is the sum of its best run on **every day it has
+  played**, so coming back tomorrow always adds — see [Daily bones](#daily-bones).
 - **A new set of bones every day.** See [Daily bones](#daily-bones) below.
 - **Oscar grows.** The more bones you collect, the bigger Oscar gets — from
   scale 0.8 up to 1.5 at 40 bones.
@@ -152,6 +153,15 @@ Because it is derived and not stored:
 - the **server regenerates the same layout** and checks every reported bone
   against it, so a pickup is verified rather than trusted.
 
+**Which day it is, is the server's to say.** The browser is never asked — its
+clock can be wrong, or set on purpose, and a guest playing a day of their own
+choosing would see a layout nobody else can verify. So the page asks
+`GET /api/bones` and plays the day it answers with, and the hand-in endpoints
+accept only today and yesterday. Bones on the ground, bones the server will
+take, and the day a score is filed under are therefore always the same day.
+(This is also what makes `OVERRIDE_DATE` work at all — see
+[Playing another day](#playing-another-day).)
+
 **How they are handed in.** The game reports *which* bone was picked up, not how
 many. Pickups are queued and flushed on a **500 ms tick, and only when there is
 something to send** — a good run is a handful of requests, an idle game makes
@@ -190,7 +200,7 @@ leaderboard — is one tap away, and stays reachable after the reply is sent.
 
 | Endpoint                  |                                                          |
 | ------------------------- | -------------------------------------------------------- |
-| `GET /api/bones`          | The day currently open, how many bones it holds, and (with `?code=`) which of them a guest already has |
+| `GET /api/bones`          | Which day is open, how many bones it holds, and (with `?code=`) which of them a guest already has. The day is the server's answer, not the caller's request |
 | `POST /api/bones`         | Hand in a batch: `{ guestCode, day, bones: number[] }`    |
 | `GET /api/bones/leaderboard` | Today's race and the all-time race                    |
 | `POST /api/score`         | File a finished run against its day: `{ guestCode, bones, blessings, finished, day }`. Answers with the run's own score and the household's running `total` |
@@ -286,6 +296,7 @@ invitation itself is configuration rather than source.
 | -------------- | --------------------------------------------- |
 | `DATABASE_URL` | Prisma connection string, e.g. `file:./dev.db` |
 | `NEXT_PUBLIC_SITE_URL` | Public origin, for absolute links in the preview cards |
+| `OVERRIDE_DATE` | Development only — pretend it is another day, `YYYY-MM-DD`. See [Playing another day](#playing-another-day) |
 
 **The invitation** — every variable below is optional, and anything left unset
 falls back to the fictional christening in `lib/eventDetails.ts`:
@@ -392,9 +403,11 @@ separate blast radii. Each one requires typing `RESET` to confirm.
 | **Nulstil svar**         | RSVPs + all game progress           | guest list, invitation-sent flags         |
 | **Nulstil hele databasen** | everything                        | nothing — rebuilds the list from `prisma/guests.ts` |
 
-The first two also clear the bone race, because a standing with no rows behind
-it is a lie. None of them touch the administrator accounts or the activity log,
-and every reset is recorded in the log with the name of whoever ran it.
+The first two also clear the bone race and the per-day score rows, because a
+standing with no rows behind it is a lie — and because the total is re-derived
+from those rows, a single one left behind would put the score straight back.
+None of them touch the administrator accounts or the activity log, and every
+reset is recorded in the log with the name of whoever ran it.
 
 ### Resetting production, including the admin password
 
@@ -432,9 +445,9 @@ group, so a reset can never race a deploy.
 | `npm run build`  | `prisma generate` + production build      |
 | `npm run start`  | Serve the production build                |
 | `npm run db:push`| Sync the Prisma schema to SQLite          |
-| `npm run seed`   | Upsert the guest list (never overwrites answers) and create the first admin |
-| `npm run db:backfill` | Fill in invitation capacity for rows that predate it (idempotent) |
-| `npm run db:split` | Give everybody named on an invitation their own seat to answer from — "and", "og", "e" and a comma each mean another person (idempotent; `--dry-run` to preview) |
+| `npm run seed`   | Upsert the guest list (never overwrites answers) and create the first admin — backs the database up first |
+| `npm run db:backfill` | Fill in invitation capacity for rows that predate it (idempotent) — backs the database up first |
+| `npm run db:split` | Give everybody named on an invitation their own seat to answer from — "and", "og", "e" and a comma each mean another person (idempotent; `--dry-run` to preview, which reads only). Backs the database up first |
 | `npm run db:verify` | Check a database is fit to be production: every guest registered with the right capacity, and an administrator present |
 | `npm test`       | Unit tests for the password policy, the invitation capacity rules, the daily bone layout, the day override, the throttled hand-in and the name splitting |
 
@@ -461,12 +474,12 @@ OVERRIDE_DATE=2026-09-07 npm run dev     # a run worth 900  → the board shows 
 `OVERRIDE_DATE` is `YYYY-MM-DD`, and it is read once when the process starts —
 changing it means restarting the server, not opening a second terminal.
 
-It is a **server** switch. The browser's clock is never trusted with the day:
-the page asks `/api/bones` which day it is and plays that one, so the bones on
-the ground, the bones the server will accept and the day a score is filed under
-are always the same day. That is also the bug this replaced — the day used to be
-computed in the browser, which quietly ignored the override and filed every run
-under the real date.
+It is a **server** switch, and only a server switch. It is not `NEXT_PUBLIC_`,
+so it never reaches the browser bundle — it does not have to, because the page
+asks the server which day it is rather than reading its own clock (see
+[Daily bones](#daily-bones)). Moving the server's date therefore moves the whole
+day at once: the bones laid out, the bones that will be accepted, and the day a
+score is filed under.
 
 Two things it deliberately will not do:
 
@@ -474,12 +487,12 @@ Two things it deliberately will not do:
   freeze the whole event on one date and silently stop the standings growing,
   which is far worse than not being able to time-travel on a live server. When
   `NODE_ENV=production` the real date is used and a warning is logged.
-- **It will not accept a date that does not exist.** Anything that is not a real
-  `YYYY-MM-DD` — `07-09-2026`, `2026-2-31` — is refused with a warning and the
-  real date is used, rather than rolling over to some neighbouring day.
+- **It will not accept a date the calendar does not have.** `07-09-2026` is the
+  wrong way round and `2026-02-31` is not a day; both are refused with a warning
+  and the real date used, rather than quietly rolling over into March.
 
-See `lib/dateOverride.ts`, and `tests/dateOverride.test.ts` for what is
-guaranteed.
+`lib/dateOverride.ts` is the implementation, `tests/dateOverride.test.ts` the
+list of promises.
 
 ---
 
@@ -490,6 +503,11 @@ database that, by the time they are run for the second time, holds answers
 nobody can type back in. So each of them copies the database aside first, into
 `prisma/backups/`, stamped with the time it ran. `--dry-run` reads only and
 leaves no copy.
+
+This is not the same thing as the admin panel's **Farezone**, which takes no
+copy: those resets are deliberate, confirmed by typing `RESET`, and recorded in
+the activity log. The backups here guard against a script, not against a
+decision.
 
 The directory is ignored by git, and deliberately: those files hold guests'
 names and their replies. A checkout with no database yet — a first seed — has
@@ -538,6 +556,8 @@ lib/                 config, i18n, invite templates, auth, audit, rate limiting
 lib/eventDetails.ts  the invitation as a type, plus the fictional fallback
 lib/config.ts        the event read from NEXT_PUBLIC_EVENT_* at build time
 lib/dailyBones.ts    the day's bone layout, derived from the date
+lib/dailyScore.ts    what a day's best run is, and what the days add up to
+lib/dateOverride.ts  OVERRIDE_DATE — pretending it is another day, in dev only
 lib/boneReporter.ts  the 500 ms throttled queue that hands bones in
 lib/names.ts         splitting a household line into the people in it
 lib/inviteCode.ts    proposing an invitation code from the names on it
@@ -546,6 +566,7 @@ lib/visitInfo.ts     what a visit says about itself — country, browser, device
 middleware.ts        Rate limiting, injection screening and security headers
 lib/levels/          level data
 prisma/              schema, seed, verification and the real guest list
+prisma/backup.ts     the copy every writing script takes before it writes
 public/assets/game/  pixel art (CC0 — see CREDITS.md)
 ```
 
