@@ -8,7 +8,8 @@ export type BoneEntry = {
   rank: number;
   name: string;
   bones: number;
-  guestCode: string;
+  /** Set by the server for the row belonging to the code we asked with. */
+  you: boolean;
 };
 
 type Props = {
@@ -35,7 +36,10 @@ export default function BoneRace({ lang, highlightCode, refreshKey = 0 }: Props)
 
   useEffect(() => {
     let active = true;
-    fetch("/api/bones/leaderboard")
+    // We name ourselves so the server can point our row out, rather than
+    // reading everybody's invitation code off the answer.
+    const query = highlightCode ? `?code=${encodeURIComponent(highlightCode)}` : "";
+    fetch(`/api/bones/leaderboard${query}`)
       .then((r) => (r.ok ? r.json() : { today: [], allTime: [] }))
       .then((d) => {
         if (active) setData({ today: d.today ?? [], allTime: d.allTime ?? [] });
@@ -44,7 +48,7 @@ export default function BoneRace({ lang, highlightCode, refreshKey = 0 }: Props)
     return () => {
       active = false;
     };
-  }, [refreshKey]);
+  }, [refreshKey, highlightCode]);
 
   const entries = data ? data[tab] : null;
 
@@ -85,11 +89,9 @@ export default function BoneRace({ lang, highlightCode, refreshKey = 0 }: Props)
         <ol className="space-y-1">
           {entries.map((e) => (
             <li
-              key={e.guestCode}
+              key={e.rank}
               className={`flex items-center gap-2 px-2 py-1 border-2 ${
-                e.guestCode === highlightCode
-                  ? "border-black bg-pastel-green"
-                  : "border-transparent"
+                e.you ? "border-black bg-pastel-green" : "border-transparent"
               }`}
             >
               <span className="w-6 shrink-0 text-center">
