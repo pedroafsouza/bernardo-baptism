@@ -23,8 +23,6 @@
 
 export type HoldKey = "left" | "right" | "jump";
 
-export const HOLD_KEYS: readonly HoldKey[] = ["left", "right", "jump"];
-
 /** Told whenever a key's down/up state actually changes. */
 export type HoldSink = (key: HoldKey, down: boolean) => void;
 
@@ -87,7 +85,7 @@ export function createTouchHolds(sink: HoldSink): TouchHolds {
       const downKeys = Array.from(held.keys());
       held.clear();
       for (const key of downKeys) sink(key, false);
-    }
+    },
 
     isDown,
   };

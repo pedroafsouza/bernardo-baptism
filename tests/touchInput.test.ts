@@ -4,10 +4,12 @@ import { createTouchHolds, type HoldKey } from "../lib/touchInput";
 
 function pad() {
   const state: Record<HoldKey, boolean> = { left: false, right: false, jump: false };
+  const calls: { key: HoldKey; down: boolean }[] = [];
   const holds = createTouchHolds((k, down) => {
     state[k] = down;
+    calls.push({ key: k, down });
   });
-  return { state, holds };
+  return { state, calls, holds };
 }
 
 test("a press holds the key and lifting the finger drops it", () => {
@@ -91,6 +93,18 @@ test("clear drops every key at once", () => {
   // a stale lift after the pad went away must not resurrect anything
   holds.release(1);
   assert.deepEqual(state, { left: false, right: false, jump: false });
+});
+
+test("clear only reports the keys that were actually down", () => {
+  const { calls, holds } = pad();
+  holds.press(1, "right");
+  calls.length = 0;
+  holds.clear();
+  assert.deepEqual(calls, [{ key: "right", down: false }]);
+
+  // nothing is held, so there is nothing to report
+  holds.clear();
+  assert.deepEqual(calls, [{ key: "right", down: false }]);
 });
 
 test("run and jump survives the thumbs swapping buttons", () => {
