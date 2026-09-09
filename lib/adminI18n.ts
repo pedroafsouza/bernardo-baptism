@@ -152,6 +152,11 @@ export type AdminDict = {
   sentOn: (date: string) => string;
   markAsSent: string;
   notExpected: string;
+  /** The eye in the score column: on the public standings, or off them. */
+  onScoreboard: string;
+  offScoreboard: string;
+  /** Stated plainly, for the row in the hosts' own standings. */
+  hiddenFromScoreboard: string;
   viewMessage: string;
   copyUrl: string;
   edit: string;
@@ -184,6 +189,7 @@ export type AdminDict = {
   visitsPrivacy: string;
   couldNotSave: string;
   couldNotUpdateSent: string;
+  couldNotUpdateScoreboard: string;
   deleteConfirm: string;
   copyFailed: (url: string) => string;
   copyFailedShort: string;
@@ -301,6 +307,8 @@ const AUDIT_LABELS_DA: Record<string, string> = {
   GUEST_DELETED: "Gæst slettet",
   INVITE_MARKED_SENT: "Invitation sendt",
   INVITE_MARKED_UNSENT: "Invitation fortrudt",
+  GUEST_SCOREBOARD_SHOWN: "Vist på ranglisten",
+  GUEST_SCOREBOARD_HIDDEN: "Skjult fra ranglisten",
   INVITE_MESSAGE_OPENED: "Invitation åbnet",
   GUEST_LINK_COPIED: "Gæstelink kopieret",
   RSVP_SUBMITTED: "Svar modtaget",
@@ -326,6 +334,8 @@ const AUDIT_LABELS_EN: Record<string, string> = {
   GUEST_DELETED: "Guest deleted",
   INVITE_MARKED_SENT: "Invitation sent",
   INVITE_MARKED_UNSENT: "Invitation un-sent",
+  GUEST_SCOREBOARD_SHOWN: "Shown on the standings",
+  GUEST_SCOREBOARD_HIDDEN: "Hidden from the standings",
   INVITE_MESSAGE_OPENED: "Invitation opened",
   GUEST_LINK_COPIED: "Guest link copied",
   RSVP_SUBMITTED: "RSVP received",
@@ -509,6 +519,9 @@ const da: AdminDict = {
   sentOn: (d) => `Sendt ${d}`,
   markAsSent: "Marker som sendt",
   notExpected: "Forventes ikke at komme",
+  onScoreboard: "Vises på ranglisten — klik for at skjule",
+  offScoreboard: "Skjult fra ranglisten — klik for at vise",
+  hiddenFromScoreboard: "Skjult fra gæsternes rangliste",
   viewMessage: "Se besked",
   copyUrl: "Kopiér URL",
   edit: "Rediger",
@@ -539,6 +552,7 @@ const da: AdminDict = {
     "Ingen IP-adresser gemmes. Besøgende tælles med en hash, der kun holder én dag.",
   couldNotSave: "Kunne ikke gemme",
   couldNotUpdateSent: "Kunne ikke opdatere 'invitation sendt'",
+  couldNotUpdateScoreboard: "Kunne ikke opdatere synlighed på ranglisten",
   deleteConfirm: "Slet denne gæst?",
   copyFailed: (url) => `Kunne ikke kopiere automatisk. Link: ${url}`,
   copyFailedShort: "Kunne ikke kopiere — markér teksten og kopiér manuelt.",
@@ -764,6 +778,9 @@ const en: AdminDict = {
   sentOn: (d) => `Sent ${d}`,
   markAsSent: "Mark as sent",
   notExpected: "Not expected to come",
+  onScoreboard: "Shown on the standings — click to hide",
+  offScoreboard: "Hidden from the standings — click to show",
+  hiddenFromScoreboard: "Hidden from the guests' standings",
   viewMessage: "View message",
   copyUrl: "Copy URL",
   edit: "Edit",
@@ -794,6 +811,7 @@ const en: AdminDict = {
     "No addresses are stored. Visitors are counted with a hash that lasts a single day.",
   couldNotSave: "Could not save",
   couldNotUpdateSent: "Could not update 'invitation sent'",
+  couldNotUpdateScoreboard: "Could not update standings visibility",
   deleteConfirm: "Delete this guest?",
   copyFailed: (url) => `Could not copy automatically. Link: ${url}`,
   copyFailedShort: "Could not copy — select the text and copy it manually.",

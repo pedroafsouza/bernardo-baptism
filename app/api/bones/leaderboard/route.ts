@@ -34,14 +34,15 @@ export async function GET(req: NextRequest) {
   ];
   const guests = codes.length
     ? await prisma.guest.findMany({
-        where: { guestCode: { in: codes } },
+        where: { guestCode: { in: codes }, onScoreboard: true },
         select: { guestCode: true, name: true },
       })
     : [];
   const names = new Map(guests.map((g) => [g.guestCode, g.name]));
 
-  // A guest deleted since a bone was collected keeps their row out of the
-  // standings rather than showing up as an unnamed code.
+  // A guest deleted since a bone was collected — or one the hosts have taken
+  // off the boards — keeps their row out of the standings rather than showing
+  // up as an unnamed code.
   const rank = (rows: Array<{ guestCode: string; _count: { _all: number } }>) =>
     rows
       .filter((r) => names.has(r.guestCode))

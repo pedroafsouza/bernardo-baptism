@@ -214,6 +214,10 @@ leaderboard — is one tap away, and stays reachable after the reply is sent.
   person never decides for anybody else, and pressing an answer again takes it
   back
 - **Invitation-sent tracking** with a timestamp, a filter and a progress bar
+- **Standings visibility** — the eye beside a household's score takes them off
+  the public leaderboard and the bone race, or puts them back. The score itself
+  is untouched and keeps accruing, so un-hiding shows what they actually earned;
+  ranks are numbered after the hidden are dropped, so no gap is left behind
 - Headline counters: how many have accepted, and how many people that is
   (adults + kids) — always counted within each invitation's capacity, so a
   household invited without children never appears with any

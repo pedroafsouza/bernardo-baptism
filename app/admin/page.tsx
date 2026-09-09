@@ -318,6 +318,27 @@ function AdminPageInner() {
   }
 
   /**
+   * Takes a household on or off the public standings. Flips at once like the
+   * "sent" tick and reverts if the server refuses; the score itself is left
+   * alone, so putting a household back shows what they actually earned.
+   */
+  async function setOnScoreboard(g: Guest, listed: boolean) {
+    putGuests((prev) =>
+      prev.map((x) => (x.id === g.id ? { ...x, onScoreboard: listed } : x))
+    );
+    const res = await fetch("/api/admin/guests", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ id: g.id, onScoreboard: listed }),
+    });
+    if (!res.ok) {
+      setError(t.couldNotUpdateScoreboard);
+      await load();
+    }
+  }
+
+  /**
    * Answers a household's invitation on their behalf — for the replies that
    * arrive by phone, in the schoolyard or at the door. The server recomputes
    * the household from the individual answers, so the numbers in the table can
@@ -491,7 +512,7 @@ function AdminPageInner() {
       "guestCode", "name", "group", "status", "maxGuests", "maxKids",
       "churchCount", "churchKids", "guestCount", "kids", "likely",
       "people", "allergies",
-      "inviteSent", "inviteSentAt", "bones", "blessings", "score", "playedAt", "updatedAt",
+      "inviteSent", "inviteSentAt", "bones", "blessings", "score", "onScoreboard", "playedAt", "updatedAt",
     ];
     const rows = guests.map((g) =>
       [
@@ -500,7 +521,7 @@ function AdminPageInner() {
         summarizeAttendees(g.attendees ?? []),
         summarizeAllergies(g.attendees ?? [], g.kidsAllergies ?? ""),
         g.inviteSent, g.inviteSentAt ?? "",
-        g.bones, g.blessings, g.score, g.playedAt ?? "", g.updatedAt,
+        g.bones, g.blessings, g.score, g.onScoreboard, g.playedAt ?? "", g.updatedAt,
       ]
         .map((v) => `"${String(v).replace(/"/g, '""')}"`)
         .join(",")
@@ -880,9 +901,23 @@ function AdminPageInner() {
             ) : (
               <ol className="text-[14px] space-y-1 max-h-56 overflow-y-auto">
                 {ranked.map((g, i) => (
-                  <li key={g.id} className="flex items-center gap-2">
+                  <li
+                    key={g.id}
+                    className={`flex items-center gap-2 ${
+                      g.onScoreboard ? "" : "opacity-50"
+                    }`}
+                  >
                     <span className="w-5 text-center opacity-60">{i + 1}</span>
                     <span className="flex-1 truncate">{g.name}</span>
+                    {/* The hosts still see what a household scored, with a
+                        reminder that the guests themselves do not. */}
+                    {!g.onScoreboard && (
+                      <Icon
+                        name="hidden"
+                        className="h-4 w-4 shrink-0"
+                        title={t.hiddenFromScoreboard}
+                      />
+                    )}
                     <span className="flex items-center gap-1 opacity-70">
                       <Icon name="bone" /> {g.bones}
                     </span>
@@ -1093,14 +1128,32 @@ function AdminPageInner() {
                     )}
                   </td>
                   <td className="p-2 text-center">
-                    {g.score > 0 ? (
-                      <span className="inline-flex items-center gap-1">
-                        <Icon name="star" className="text-yellow-500" />
-                        {g.score}
-                      </span>
-                    ) : (
-                      <span className="opacity-40">—</span>
-                    )}
+                    <span className="inline-flex items-center gap-2">
+                      {g.score > 0 ? (
+                        <span className="inline-flex items-center gap-1">
+                          <Icon name="star" className="text-yellow-500" />
+                          {g.score}
+                        </span>
+                      ) : (
+                        <span className="opacity-40">—</span>
+                      )}
+                      {/* Off the boards without losing the score behind it. */}
+                      <button
+                        type="button"
+                        aria-pressed={g.onScoreboard}
+                        aria-label={g.onScoreboard ? t.onScoreboard : t.offScoreboard}
+                        title={g.onScoreboard ? t.onScoreboard : t.offScoreboard}
+                        onClick={() => setOnScoreboard(g, !g.onScoreboard)}
+                        className={`pixel-btn border-2 border-black p-0.5 ${
+                          g.onScoreboard ? "bg-white" : "bg-pastel-pink"
+                        }`}
+                      >
+                        <Icon
+                          name={g.onScoreboard ? "visible" : "hidden"}
+                          className="h-4 w-4"
+                        />
+                      </button>
+                    </span>
                   </td>
                   <td className="p-2">
                     <div className="flex gap-1 flex-wrap">

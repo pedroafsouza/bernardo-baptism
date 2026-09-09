@@ -32,6 +32,8 @@ const LOOK: Record<string, { icon: IconName; className: string }> = {
   GUEST_DELETED: { icon: "trash", className: "bg-pastel-pink" },
   INVITE_MARKED_SENT: { icon: "sent", className: "bg-pastel-green" },
   INVITE_MARKED_UNSENT: { icon: "sent", className: "bg-pastel-yellow" },
+  GUEST_SCOREBOARD_SHOWN: { icon: "visible", className: "bg-pastel-green" },
+  GUEST_SCOREBOARD_HIDDEN: { icon: "hidden", className: "bg-pastel-yellow" },
   INVITE_MESSAGE_OPENED: { icon: "mail", className: "bg-pastel-cream" },
   GUEST_LINK_COPIED: { icon: "copy", className: "bg-pastel-cream" },
   RSVP_SUBMITTED: { icon: "attending", className: "bg-pastel-green" },

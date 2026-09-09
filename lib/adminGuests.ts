@@ -31,6 +31,8 @@ export type AdminGuest = {
   bones: number;
   blessings: number;
   score: number;
+  /** Whether the household is listed on the public standings. */
+  onScoreboard: boolean;
   playedAt: string | null;
   updatedAt: string;
 };
